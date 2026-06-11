@@ -38,18 +38,20 @@ def main():
         for row in reader:
             rows.append(row)
             
-    # Tìm sản phẩm đầu tiên có trạng thái APPROVED
+    # Tìm bài đầu tiên có trạng thái PENDING hoặc APPROVED
     target_idx = -1
+    prod = None
     for i, row in enumerate(rows):
-        if row["Status"] == "APPROVED":
+        if row.get("Status") in ["APPROVED", "PENDING"]:
+            prod = row
             target_idx = i
             break
             
-    if target_idx == -1:
-        print("[+] Không có bài đăng nào ở trạng thái 'APPROVED' cần đăng.")
+    if not prod:
+        print("[!] Không tìm thấy bài viết nào đang ở trạng thái chờ duyệt (PENDING/APPROVED).")
+        print("[*] Hãy chạy lại lệnh python3 prepare_content.py để quét thêm sản phẩm mới.")
         return
         
-    prod = rows[target_idx]
     print(f"[*] Đang chuẩn bị đăng sản phẩm: {prod['Title']}")
     
     try:
