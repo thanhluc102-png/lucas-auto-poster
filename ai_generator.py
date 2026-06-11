@@ -1,47 +1,40 @@
 import os
-from google import genai
-from google.genai import types
+import anthropic
 
 def generate_facebook_post(product_title: str, product_link: str) -> str:
     """
-    Sử dụng Google GenAI (Gemini) để tạo nội dung bài post Facebook dựa trên tên sản phẩm.
+    Sử dụng Anthropic (Claude) để tạo nội dung bài post Facebook dựa trên tên sản phẩm.
     """
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key or api_key == "your_gemini_api_key_here":
-        raise ValueError("Chưa cấu hình GEMINI_API_KEY trong file .env")
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("Chưa cấu hình ANTHROPIC_API_KEY trong file .env")
         
-    client = genai.Client(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key)
     
-    prompt = f"""Bạn là một chuyên gia Content Marketing và Copywriter chuyên nghiệp, đặc biệt chuyên mảng phụ kiện Apple, đồ công nghệ.
-Hãy viết một bài đăng Facebook Fanpage cho sản phẩm sau: '{product_title}'.
+    prompt = f"""Bạn là một chuyên gia viết content quảng cáo bán hàng trên Facebook (Facebook Copywriter).
+Hãy viết 1 đoạn status giới thiệu sản phẩm sau đây:
+Tên sản phẩm: {product_title}
 
-Yêu cầu:
-1. Dòng đầu tiên phải là một Tiêu Đề (Title) cực kỳ thu hút, giật tít, khơi gợi sự tò mò hoặc đánh đúng vào nỗi đau của khách hàng. Hãy in hoa hoặc dùng ngoặc vuông để làm nổi bật. (Độ dài < 15 chữ).
-2. Phần thân bài dài khoảng 3-4 câu, giới thiệu ngắn gọn lợi ích nổi bật của sản phẩm.
-3. Tạo sự khan hiếm (ví dụ: "Số lượng có hạn", "Chỉ còn vài chiếc",...).
-4. Dòng cuối cùng là Call-to-Action, hướng dẫn khách bấm vào link để mua hàng.
-5. Sử dụng emoji phù hợp nhưng đừng lạm dụng quá nhiều.
-6. Kết thúc bằng hashtag: #LucasCombo #LucasVN #PhuKienApple #DoCongNghe
+Quy tắc BẮT BUỘC (rất quan trọng, nếu vi phạm sẽ bị lỗi hệ thống):
+1. TUYỆT ĐỐI KHÔNG SỬ DỤNG ký tự Markdown như ** (để in đậm), * (để in nghiêng), hay # (tiêu đề). Hãy viết text thuần túy như người bình thường gõ trên điện thoại.
+2. Bạn ĐƯỢC PHÉP dùng hashtag ở cuối bài viết (ví dụ #LucasVN #PhuKienApple).
+3. KHÔNG đưa bất kỳ link trang web hay URL nào vào trong bài viết.
+4. Viết ngắn gọn 3-4 câu. ĐẶC BIẸT: Phải XUỐNG DÒNG VÀ ĐỂ TRỐNG 1 DÒNG giữa các ý để đoạn văn trông thoáng, dễ đọc trên điện thoại. Tránh viết thành một cục text dính liền nhau.
+5. Sử dụng 2-3 emoji phù hợp cho sinh động.
 
-Link sản phẩm để chèn vào bài: {product_link}
-"""
+Nội dung bài đăng:"""
 
     print(f"[*] Đang yêu cầu AI tạo nội dung cho: {product_title[:30]}...")
-    response = client.models.generate_content(
-        model='gemini-2.5-pro',
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.7,
-        ),
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=500,
+        temperature=0.7,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
     )
     
-    return response.text.strip()
+    return response.content[0].text.strip()
 
 if __name__ == "__main__":
-    # Test thử nếu có API key
-    from dotenv import load_dotenv
-    load_dotenv()
-    if os.getenv("GEMINI_API_KEY") and os.getenv("GEMINI_API_KEY") != "your_gemini_api_key_here":
-        print(generate_facebook_post("Túi Hành lý Thule Chasm Recycled Duffel 30L", "https://lucas.vn/..."))
-    else:
-        print("Chưa có API Key để test.")
+    pass

@@ -13,7 +13,8 @@ env.bak/
 venv.bak/
 
 # History and temp
-history.json
+# history.json (We need this tracked by Git)
 *.png
+!logo.png
 *.jpg
 *.jpeg

@@ -1,9 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 
-def get_new_products(url="https://lucas.vn/"):
+def get_new_products(url="https://lucas.vn/san-pham?orderby=date"):
     """
-    Truy cập vào trang chủ hoặc danh mục của lucas.vn để lấy danh sách sản phẩm.
+    Truy cập vào trang sản phẩm mới nhất của lucas.vn để lấy danh sách sản phẩm.
     Trả về list các dict: [{'title': '...', 'link': '...', 'thumbnail': '...'}, ...]
     """
     headers = {

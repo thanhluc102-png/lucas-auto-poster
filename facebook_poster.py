@@ -1,10 +1,9 @@
 import os
 import requests
 
-def post_to_facebook(image_url: str, caption: str) -> dict:
+def post_to_facebook(image_path: str, caption: str) -> dict:
     """
-    Đăng ảnh kèm caption lên Facebook Fanpage thông qua Graph API.
-    Ảnh sẽ được upload trực tiếp từ URL mà không cần tải xuống máy.
+    Đăng ảnh cục bộ kèm caption lên Facebook Fanpage thông qua Graph API.
     """
     page_token = os.getenv("FB_PAGE_TOKEN")
     page_id = os.getenv("FB_PAGE_ID")
@@ -18,23 +17,44 @@ def post_to_facebook(image_url: str, caption: str) -> dict:
     url = f"https://graph.facebook.com/v20.0/{page_id}/photos"
     
     payload = {
-        "url": image_url,
         "caption": caption,
         "access_token": page_token
     }
     
     print("[*] Đang gửi yêu cầu lên Facebook Graph API...")
-    response = requests.post(url, data=payload)
+    with open(image_path, "rb") as img_file:
+        response = requests.post(url, data=payload, files={"source": img_file})
     
     if response.status_code != 200:
         print(f"[!] Lỗi khi đăng bài lên Facebook: {response.text}")
+        return None
     
-    response.raise_for_status()
-    result = response.json()
-    post_id = result.get("post_id", result.get("id", "?"))
-    
+    post_id = response.json().get("post_id")
     print(f"[+] Đã đăng thành công lên Facebook! Post ID: {post_id}")
-    return result
+    return post_id
+
+def comment_on_post(post_id: str, comment_text: str) -> bool:
+    """
+    Bình luận vào một bài viết đã đăng trên Fanpage.
+    """
+    page_token = os.getenv("FB_PAGE_TOKEN")
+    if not page_token:
+        return False
+        
+    url = f"https://graph.facebook.com/v20.0/{post_id}/comments"
+    payload = {
+        "message": comment_text,
+        "access_token": page_token
+    }
+    
+    print("[*] Đang tự động comment link sản phẩm...")
+    response = requests.post(url, data=payload)
+    if response.status_code == 200:
+        print("[+] Đã comment link thành công!")
+        return True
+    else:
+        print(f"[!] Lỗi khi comment: {response.text}")
+        return False
 
 if __name__ == "__main__":
     pass
