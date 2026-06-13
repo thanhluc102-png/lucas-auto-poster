@@ -78,6 +78,7 @@ def main():
                 save_history(history)
             else:
                 print("[!] Quá trình đăng bài thất bại.")
+                sys.exit(1)
                 
         # Dọn dẹp ảnh tạm
         if os.path.exists(banner_path):
