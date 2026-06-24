@@ -4,3 +4,4 @@ anthropic==0.42.0
 python-dotenv==1.0.1
 Pillow>=10.2.0
 playwright>=1.40.0
+Flask>=3.0.0

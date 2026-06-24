@@ -1,11 +1,14 @@
 import os
+import sys
 import json
 import csv
 from dotenv import load_dotenv
 load_dotenv()
 
 from image_processor import create_product_banner
-from facebook_poster import post_to_facebook, comment_on_post
+from image_uploader import upload_image_to_wordpress
+from facebook_poster import post_to_facebook, comment_on_post, post_to_instagram, post_to_threads
+from prepare_content import main as fetch_new_products
 
 HISTORY_FILE = "history.json"
 CSV_FILE = "content_plan.csv"
@@ -26,8 +29,12 @@ def main():
     print("🚀 BẮT ĐẦU CHẠY POSTER TỪ FILE CSV")
     print("==================================================")
     
+    # TỰ ĐỘNG QUÉT SẢN PHẨM MỚI TỪ WEBSITE VÀO CSV
+    print("[*] Đang kiểm tra xem có sản phẩm nào mới trên Website không...")
+    fetch_new_products()
+    
     if not os.path.exists(CSV_FILE):
-        print(f"[!] File {CSV_FILE} không tồn tại. Hãy chạy prepare_content.py trước.")
+        print(f"[!] Vẫn không tìm thấy file {CSV_FILE}.")
         return
 
     # Đọc toàn bộ nội dung CSV
@@ -49,7 +56,7 @@ def main():
             
     if not prod:
         print("[!] Không tìm thấy bài viết nào đang ở trạng thái chờ duyệt (PENDING/APPROVED).")
-        print("[*] Hãy chạy lại lệnh python3 prepare_content.py để quét thêm sản phẩm mới.")
+        print("[*] Đã quét hết sản phẩm hiện có trên website. Hãy chờ web cập nhật thêm sản phẩm mới.")
         return
         
     print(f"[*] Đang chuẩn bị đăng sản phẩm: {prod['Title']}")
@@ -68,6 +75,13 @@ def main():
             if post_id:
                 comment_text = f"👉 Xem chi tiết và đặt mua sản phẩm tại đây: {prod['Link']}"
                 comment_on_post(post_id, comment_text)
+                
+                # Bơm ảnh lên public URL để đăng sang Insta / Threads
+                public_url = upload_image_to_wordpress(banner_path)
+                if public_url:
+                    ig_caption = f"{prod['Caption']}\n\n👉 Mua ngay tại: {prod['Link']}"
+                    post_to_instagram(public_url, ig_caption)
+                    post_to_threads(public_url, ig_caption)
                 
                 rows[target_idx]["Status"] = "POSTED"
                 

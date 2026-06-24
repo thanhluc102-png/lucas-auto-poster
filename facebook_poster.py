@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 
 def post_to_facebook(image_path: str, caption: str) -> dict:
     """
@@ -55,6 +56,98 @@ def comment_on_post(post_id: str, comment_text: str) -> bool:
     else:
         print(f"[!] Lỗi khi comment: {response.text}")
         return False
+
+def post_to_instagram(image_url: str, caption: str) -> str:
+    """
+    Đăng ảnh lên Instagram bằng link Public.
+    """
+    ig_account_id = os.getenv("IG_ACCOUNT_ID")
+    page_token = os.getenv("FB_PAGE_TOKEN") # Thường dùng chung token với Page
+    
+    if not ig_account_id or not page_token:
+        print("[!] Thiếu IG_ACCOUNT_ID hoặc FB_PAGE_TOKEN trong .env")
+        return None
+        
+    print("[*] Đang đẩy ảnh lên Instagram Container...")
+    url_media = f"https://graph.facebook.com/v20.0/{ig_account_id}/media"
+    payload_media = {
+        "image_url": image_url,
+        "caption": caption,
+        "access_token": page_token
+    }
+    
+    res = requests.post(url_media, data=payload_media)
+    if res.status_code != 200:
+        print(f"[!] Lỗi khi tạo IG Media Container: {res.text}")
+        return None
+        
+    creation_id = res.json().get("id")
+    
+    print("[*] Đang chờ 10 giây để Instagram xử lý ảnh...")
+    time.sleep(10)
+    
+    print("[*] Đang Publish Instagram Post...")
+    url_publish = f"https://graph.facebook.com/v20.0/{ig_account_id}/media_publish"
+    payload_publish = {
+        "creation_id": creation_id,
+        "access_token": page_token
+    }
+    
+    res_pub = requests.post(url_publish, data=payload_publish)
+    if res_pub.status_code != 200:
+        print(f"[!] Lỗi khi Publish IG Post: {res_pub.text}")
+        return None
+        
+    post_id = res_pub.json().get("id")
+    print(f"[+] Đã đăng thành công lên Instagram! Post ID: {post_id}")
+    return post_id
+
+def post_to_threads(image_url: str, text: str) -> str:
+    """
+    Đăng bài lên Threads.
+    """
+    threads_user_id = os.getenv("THREADS_USER_ID")
+    threads_token = os.getenv("THREADS_TOKEN")
+    
+    if not threads_user_id or not threads_token:
+        print("[!] Thiếu THREADS_USER_ID hoặc THREADS_TOKEN trong .env")
+        return None
+        
+    # Đảm bảo caption Threads không vượt quá 500 ký tự theo chuẩn API
+    if len(text) > 495:
+        text = text[:495] + "..."
+        
+    print("[*] Đang đẩy ảnh lên Threads Container...")
+    url_media = f"https://graph.threads.net/v1.0/{threads_user_id}/threads"
+    payload_media = {
+        "media_type": "IMAGE",
+        "image_url": image_url,
+        "text": text,
+        "access_token": threads_token
+    }
+    
+    res = requests.post(url_media, data=payload_media)
+    if res.status_code != 200:
+        print(f"[!] Lỗi khi tạo Threads Container: {res.text}")
+        return None
+        
+    creation_id = res.json().get("id")
+    
+    print("[*] Đang Publish Threads Post...")
+    url_publish = f"https://graph.threads.net/v1.0/{threads_user_id}/threads_publish"
+    payload_publish = {
+        "creation_id": creation_id,
+        "access_token": threads_token
+    }
+    
+    res_pub = requests.post(url_publish, data=payload_publish)
+    if res_pub.status_code != 200:
+        print(f"[!] Lỗi khi Publish Threads Post: {res_pub.text}")
+        return None
+        
+    post_id = res_pub.json().get("id")
+    print(f"[+] Đã đăng thành công lên Threads! Post ID: {post_id}")
+    return post_id
 
 if __name__ == "__main__":
     pass

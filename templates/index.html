@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucas - Auto Poster AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        body {
+            background-color: #0f172a; /* Dark blue/slate */
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Nền Gradient mờ ảo đằng sau */
+        .bg-glow-1 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-radius: 50%;
+            top: -100px;
+            left: -100px;
+            filter: blur(120px);
+            opacity: 0.3;
+            z-index: -1;
+            animation: pulse 8s infinite alternate;
+        }
+
+        .bg-glow-2 {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #ef4444, #c2410c);
+            border-radius: 50%;
+            bottom: -50px;
+            right: -50px;
+            filter: blur(120px);
+            opacity: 0.2;
+            z-index: -1;
+            animation: pulse 10s infinite alternate-reverse;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.2; }
+            100% { transform: scale(1.2); opacity: 0.4; }
+        }
+
+        /* Khung kính mờ (Glassmorphism) */
+        .glass-container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #fef08a, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        input[type="url"] {
+            width: 100%;
+            padding: 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="url"]:focus {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px -10px rgba(245, 158, 11, 0.6);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -10px rgba(245, 158, 11, 0.8);
+        }
+
+        button:disabled {
+            background: #475569;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Loading UI */
+        .loading-container {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            color: #64748b;
+            transition: color 0.3s ease;
+        }
+
+        .step.active {
+            color: #f8fafc;
+        }
+
+        .step.done {
+            color: #22c55e;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #f59e0b;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 12px;
+            opacity: 0;
+        }
+
+        .step.active .spinner {
+            opacity: 1;
+        }
+
+        .step.done .spinner {
+            display: none;
+        }
+
+        .step.done::before {
+            content: '✓';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            font-weight: bold;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Thành công UI */
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .success-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .result-title {
+            color: #22c55e;
+            font-weight: 600;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .preview-img {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .btn-facebook {
+            display: inline-block;
+            background: #1877f2;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .btn-facebook:hover {
+            background: #166fe5;
+        }
+
+        .error-message {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+
+    <div class="glass-container">
+        <h1>Lucas Auto Poster</h1>
+        <p class="subtitle">Dán link sản phẩm và để AI lo phần còn lại</p>
+
+        <div class="input-group">
+            <label>Link sản phẩm (lucas.vn)</label>
+            <input type="url" id="productUrl" placeholder="https://lucas.vn/san-pham/..." autocomplete="off">
+        </div>
+
+        <div class="input-group">
+            <label>Ảnh tự chụp (Không bắt buộc, nếu không có sẽ lấy ảnh từ web)</label>
+            <input type="file" id="customImage" accept="image/*" style="width: 100%; padding: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: #cbd5e1; outline: none; transition: all 0.3s ease;">
+        </div>
+
+        <button id="postBtn" onclick="startPosting()">Đăng Lên Fanpage Ngay 🚀</button>
+
+        <div id="errorBox" class="error-message"></div>
+
+        <div class="loading-container" id="loadingArea">
+            <div class="step" id="step1">
+                <div class="spinner"></div> 1. Đang bóc tách dữ liệu website...
+            </div>
+            <div class="step" id="step2">
+                <div class="spinner"></div> 2. Claude AI đang viết Content...
+            </div>
+            <div class="step" id="step3">
+                <div class="spinner"></div> 3. Đang thiết kế Banner HTML...
+            </div>
+            <div class="step" id="step4">
+                <div class="spinner"></div> 4. Đang bắn bài lên FB, IG & Threads...
+            </div>
+        </div>
+
+        <div class="result-container" id="resultArea">
+            <div class="success-icon">🎉</div>
+            <div class="result-title">Lên bài thành công!</div>
+            <img src="" id="resultImg" class="preview-img" alt="Banner Preview">
+            
+            <div id="socialLinks" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;"></div>
+            
+            <button onclick="resetForm()" style="margin-top: 20px; background: rgba(255,255,255,0.1); box-shadow: none;">Đăng bài khác</button>
+        </div>
+    </div>
+
+    <script>
+        function simulateLoading() {
+            // Giả lập UI chạy các bước (vì Backend chạy gộp)
+            const steps = [
+                { id: 'step1', time: 1000 },
+                { id: 'step2', time: 4000 },
+                { id: 'step3', time: 12000 },
+                { id: 'step4', time: 20000 }
+            ];
+
+            steps.forEach((s, index) => {
+                setTimeout(() => {
+                    if (index > 0) {
+                        document.getElementById(steps[index-1].id).classList.remove('active');
+                        document.getElementById(steps[index-1].id).classList.add('done');
+                    }
+                    document.getElementById(s.id).classList.add('active');
+                }, s.time);
+            });
+        }
+
+        async function startPosting() {
+            const urlInput = document.getElementById('productUrl');
+            const url = urlInput.value.trim();
+            const btn = document.getElementById('postBtn');
+            const errorBox = document.getElementById('errorBox');
+            
+            if (!url.includes('lucas.vn')) {
+                errorBox.innerText = "Vui lòng nhập đường link hợp lệ từ lucas.vn!";
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            // Giao diện chờ
+            btn.disabled = true;
+            btn.innerText = "Đang xử lý...";
+            urlInput.disabled = true;
+            document.getElementById('customImage').disabled = true;
+            errorBox.style.display = 'none';
+            document.getElementById('loadingArea').style.display = 'block';
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('socialLinks').innerHTML = '';
+
+            // Reset steps
+            document.querySelectorAll('.step').forEach(el => {
+                el.classList.remove('active', 'done');
+            });
+
+            simulateLoading();
+
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+                
+                const imageFile = document.getElementById('customImage').files[0];
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                }
+
+                const response = await fetch('/api/quick-post', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                // Đánh dấu xong step cuối
+                document.getElementById('step4').classList.remove('active');
+                document.getElementById('step4').classList.add('done');
+
+                if (data.success) {
+                    setTimeout(() => {
+                        document.getElementById('loadingArea').style.display = 'none';
+                        document.getElementById('resultArea').style.display = 'block';
+                        document.getElementById('resultImg').src = data.banner_url;
+                        
+                        const linksDiv = document.getElementById('socialLinks');
+                        let html = '';
+                        if (data.results.facebook) {
+                            html += `<a href="${data.results.facebook}" target="_blank" class="btn-facebook" style="background:#1877f2;">Mở Facebook</a>`;
+                        }
+                        if (data.results.instagram) {
+                            html += `<a href="${data.results.instagram}" target="_blank" class="btn-facebook" style="background:#E1306C;">Mở Instagram</a>`;
+                        }
+                        if (data.results.threads) {
+                            html += `<a href="${data.results.threads}" target="_blank" class="btn-facebook" style="background:#000000; border:1px solid #333;">Mở Threads</a>`;
+                        }
+                        if (data.results.warning) {
+                            html += `<p style="color:#ef4444; width:100%; margin-top:10px; font-size:14px;">${data.results.warning}</p>`;
+                        }
+                        linksDiv.innerHTML = html;
+                        
+                    }, 1000);
+                } else {
+                    throw new Error(data.message);
+                }
+
+            } catch (error) {
+                document.getElementById('loadingArea').style.display = 'none';
+                errorBox.innerText = error.message || "Có lỗi bất ngờ xảy ra!";
+                errorBox.style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = "Đăng Lên Fanpage Ngay 🚀";
+                urlInput.disabled = false;
+                document.getElementById('customImage').disabled = false;
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('productUrl').value = '';
+            document.getElementById('productUrl').disabled = false;
+            document.getElementById('customImage').value = '';
+            document.getElementById('customImage').disabled = false;
+            document.getElementById('postBtn').disabled = false;
+            document.getElementById('postBtn').innerText = "Đăng Lên Fanpage Ngay 🚀";
+            document.getElementById('resultArea').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

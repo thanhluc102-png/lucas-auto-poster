@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from scraper import get_new_products
-from ai_generator import generate_facebook_post
+from ai_generator import generate_social_posts
 
 HISTORY_FILE = "history.json"
 CSV_FILE = "content_plan.csv"
@@ -61,7 +61,8 @@ def main():
             print(f"Tên: {prod['title']}")
             
             try:
-                caption = generate_facebook_post(prod['title'], prod['link'])
+                ai_result = generate_social_posts(prod['title'], prod['link'])
+                caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
                 writer.writerow({
                     "Status": "PENDING", # Mặc định là chờ duyệt
                     "Title": prod['title'],
