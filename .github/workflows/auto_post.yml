@@ -4,7 +4,7 @@ on:
   schedule:
     # 01:00 UTC = 08:00 sáng giờ VN
     # 14:00 UTC = 21:00 tối giờ VN
-    - cron: '0 1,14 * * *'
+    - cron: '15 1,14 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 permissions:
