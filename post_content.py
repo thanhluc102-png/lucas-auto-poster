@@ -45,14 +45,40 @@ def main():
         for row in reader:
             rows.append(row)
             
+    BRANDS = ['Thule', 'Ulanzi', 'Inateck', 'LISEN', 'WiWU', 'HyperWork', 'Anker', 'Sharge', 'Tomtoc', 'Spigen', 'MOFT', 'Zagg']
+    def get_brand(title):
+        title_lower = title.lower()
+        for b in BRANDS:
+            if b.lower() in title_lower:
+                return b
+        return "Other"
+
+    # Tìm brand của bài cuối cùng đã POSTED
+    last_posted_brand = None
+    for row in reversed(rows):
+        if row.get("Status") == "POSTED":
+            last_posted_brand = get_brand(row.get("Title", ""))
+            break
+
     # Tìm bài đầu tiên có trạng thái PENDING hoặc APPROVED
     target_idx = -1
     prod = None
+    
+    # Ưu tiên tìm bài có brand khác với bài vừa đăng
     for i, row in enumerate(rows):
         if row.get("Status") in ["APPROVED", "PENDING"]:
-            prod = row
-            target_idx = i
-            break
+            if get_brand(row.get("Title", "")) != last_posted_brand:
+                prod = row
+                target_idx = i
+                break
+                
+    # Nếu không có brand khác (hoặc đây là bài đầu tiên), lấy bài PENDING đầu tiên
+    if not prod:
+        for i, row in enumerate(rows):
+            if row.get("Status") in ["APPROVED", "PENDING"]:
+                prod = row
+                target_idx = i
+                break
             
     if not prod:
         print("[!] Không tìm thấy bài viết nào đang ở trạng thái chờ duyệt (PENDING/APPROVED).")
