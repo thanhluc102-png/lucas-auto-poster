@@ -27,7 +27,8 @@ def get_base64_image(image_url_or_path: str):
         print(f"Lỗi tải ảnh {image_url_or_path}: {e}")
         return ""
 
-def create_product_banner(image_url: str, title: str, output_path: str = "temp_banner_post.png"):
+def create_product_banner(image_url: str, title: str, output_path: str = "temp_banner_post.jpg"):
+    output_path = output_path.replace(".png", ".jpg")
     """
     Sử dụng Playwright để chụp ảnh màn hình từ file HTML/CSS siêu đẹp.
     """
@@ -56,7 +57,7 @@ def create_product_banner(image_url: str, title: str, output_path: str = "temp_b
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": WIDTH, "height": HEIGHT})
         page.set_content(html_content, wait_until="networkidle")
-        page.screenshot(path=output_path, clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
+        page.screenshot(path=output_path, type="jpeg", quality=80, clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
         browser.close()
         
     print(f"[+] Đã tạo xong banner xịn xò: {output_path}")
