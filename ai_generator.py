@@ -33,7 +33,7 @@ Hãy tạo nội dung JSON ngay bây giờ:"""
     print(f"[*] Đang yêu cầu AI tạo nội dung 3 nền tảng cho: {product_title[:30]}...")
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-3-5-sonnet-20240620",
             max_tokens=2500,
             temperature=0.7,
             messages=[

@@ -3,7 +3,7 @@ import json
 from dotenv import load_dotenv
 
 from scraper import get_new_products
-from ai_generator import generate_facebook_post
+from ai_generator import generate_social_posts
 from facebook_poster import post_to_facebook
 
 HISTORY_FILE = "history.json"
@@ -59,8 +59,9 @@ def main():
         
         try:
             # 4. Sinh nội dung bằng AI
-            caption = generate_facebook_post(prod['title'], prod['link'])
-            print("\n>>> KẾT QUẢ AI SINH RA:")
+            contents = generate_social_posts(prod['title'], prod['link'])
+            caption = contents.get("facebook", "") if contents else "Tham khảo sản phẩm tại: " + prod['link']
+            print("\n>>> KẾT QUẢ AI SINH RA (FACEBOOK):")
             print(caption)
             print("<<<\n")
             
