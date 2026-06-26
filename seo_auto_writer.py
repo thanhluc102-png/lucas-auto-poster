@@ -25,9 +25,9 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 WP_SITE_URL       = os.getenv("WP_SITE_URL", "https://lucas.vn").rstrip("/")
 WP_USERNAME       = os.getenv("WP_USERNAME")
 WP_APP_PASSWORD   = os.getenv("WP_APP_PASSWORD")
-CLAUDE_MODEL      = "claude-3-5-sonnet-20240620"
+CLAUDE_MODEL      = "claude-opus-4-8"
 
-ULANZI_URL        = "https://lucas.vn/danh-muc/phu-kien-ulanzi"
+TARGET_URL        = os.getenv("TARGET_CATEGORY_URL") or "https://lucas.vn/thuong-hieu/lisen"
 HISTORY_FILE      = Path(__file__).parent / "seo_history.json"
 HEADERS_SCRAPE    = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -51,12 +51,12 @@ def save_history(history: list):
 
 # ── 1. Lấy danh sách sản phẩm Ulanzi ─────────────────────────────────────────
 
-def get_ulanzi_products(pages: int = 3) -> list:
+def get_target_products(pages: int = 3) -> list:
     from bs4 import BeautifulSoup
     results = []
     seen = set()
     for page in range(1, pages + 1):
-        url = ULANZI_URL if page == 1 else f"{ULANZI_URL}/page/{page}"
+        url = TARGET_URL if page == 1 else f"{TARGET_URL}/page/{page}"
         try:
             r = requests.get(url, headers=HEADERS_SCRAPE, timeout=15, allow_redirects=True)
             r.raise_for_status()
@@ -171,44 +171,7 @@ Yêu cầu BẮT BUỘC — Trả về DUY NHẤT một JSON hợp lệ, không 
 
 # ── 4. Tạo thumbnail bằng Pillow ──────────────────────────────────────────────
 
-def create_thumbnail(image_url: str, title: str, output_path: str) -> str | None:
-    try:
-        from PIL import Image, ImageDraw, ImageFont
-        import textwrap
-
-        # Tải ảnh gốc
-        r = requests.get(image_url, headers=HEADERS_SCRAPE, timeout=15)
-        r.raise_for_status()
-        img = Image.open(BytesIO(r.content)).convert("RGB")
-
-        # Resize về 1200x630 (OG image standard)
-        img = img.resize((1200, 630), Image.LANCZOS)
-
-        draw = ImageDraw.Draw(img)
-
-        # Overlay gradient tối ở dưới
-        overlay = Image.new("RGBA", (1200, 200), (0, 0, 0, 160))
-        img.paste(Image.new("RGB", (1200, 200), (0, 0, 0)), (0, 430), overlay)
-
-        # Text tiêu đề
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 42)
-            font_small = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 28)
-        except Exception:
-            font = ImageFont.load_default()
-            font_small = font
-
-        # Wrap text
-        wrapped = textwrap.fill(title, width=38)
-        draw.text((40, 445), wrapped, font=font, fill=(255, 255, 255))
-        draw.text((40, 590), "lucas.vn", font=font_small, fill=(255, 204, 0))
-
-        img.save(output_path, "PNG", optimize=True)
-        log(f"[*] Thumbnail tạo xong: {output_path}")
-        return output_path
-    except Exception as e:
-        log(f"[!] Lỗi tạo thumbnail: {e}")
-        return None
+# (Đã chuyển sang dùng create_seo_thumbnail từ seo_make_thumbnail.py)
 
 # ── 5. Upload media lên WordPress ─────────────────────────────────────────────
 
@@ -309,10 +272,10 @@ def main():
     history = load_history()
     log(f"[*] Lịch sử: {len(history)} sản phẩm đã đăng")
 
-    # 2. Lấy danh sách sản phẩm Ulanzi
-    products = get_ulanzi_products(pages=3)
+    # 2. Lấy danh sách sản phẩm
+    products = get_target_products(pages=3)
     if not products:
-        log("[-] Không lấy được sản phẩm nào từ danh mục Ulanzi")
+        log("[-] Không lấy được sản phẩm nào từ danh mục")
         sys.exit(0)
 
     # 3. Lọc sản phẩm mới
@@ -320,7 +283,7 @@ def main():
     log(f"[*] Sản phẩm mới chưa đăng: {len(new_products)}")
 
     if not new_products:
-        print("\n✅ Không có sản phẩm Ulanzi mới hôm nay")
+        print("\n✅ Không có sản phẩm mới hôm nay")
         sys.exit(0)
 
     # Chỉ xử lý 1 sản phẩm mỗi lần chạy (theo scheduled task)
@@ -342,9 +305,10 @@ def main():
             article["content"], detail["gallery"]
         )
 
-    # 7. Tạo thumbnail
+    # 7. Tạo thumbnail bằng template chuẩn SEO
+    from seo_make_thumbnail import create_seo_thumbnail
     tmp_path = f"/tmp/seo_thumb_{int(time.time())}.png"
-    thumb_ok = create_thumbnail(product["thumbnail"], product["title"], tmp_path)
+    thumb_ok = create_seo_thumbnail(product["thumbnail"], product["title"], tmp_path, kicker="PHỤ KIỆN LISEN")
 
     # 8. Upload thumbnail lên WordPress
     media_id = None
