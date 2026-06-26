@@ -146,7 +146,7 @@ Yêu cầu BẮT BUỘC — Trả về DUY NHẤT một JSON hợp lệ, không 
   "meta_description": "Meta description 150-160 ký tự, tóm tắt lợi ích chính",
   "focus_keyword": "Từ khóa SEO chính (ví dụ: Ulanzi D200X)",
   "slug": "slug-url-tieng-viet-khong-dau",
-  "content": "Nội dung HTML đầy đủ của bài viết (ít nhất 800 từ). Dùng thẻ <h2>, <h3>, <p>, <ul>, <li>. KHÔNG dùng <html><body><head>. Bao gồm: giới thiệu, tính năng nổi bật, thông số kỹ thuật, đối tượng phù hợp, kết luận. Chèn từ khóa tự nhiên. Cuối bài có CTA: <div class=\\"cta-box\\"><p>👉 Mua ngay <a href=\\"{product['link']}\\">tại đây</a> với giá tốt nhất!</p></div>"
+  "content": "Nội dung HTML đầy đủ của bài viết (ít nhất 800 từ). Dùng thẻ <h2>, <h3>, <p>, <ul>, <li>. KHÔNG dùng <html><body><head>. Bao gồm: giới thiệu, tính năng nổi bật, thông số kỹ thuật, đối tượng phù hợp, kết luận. Chèn từ khóa tự nhiên. Cuối bài BẮT BUỘC tạo 1 Khối Card Mua Hàng (Product Card) bằng HTML với style CSS inline đẹp mắt (viền bo tròn, bóng đổ, màu sắc nổi bật), hiển thị Tên sản phẩm, Giá bán và một Nút (Button) '🛒 MUA NGAY'. Link mua hàng: {product['link']}. Giá bán: {product.get('price', 'Liên hệ')}."
 }}"""
 
     log(f"[*] Đang nhờ Claude viết bài cho: {product['title'][:50]}...")
