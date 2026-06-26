@@ -25,7 +25,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 WP_SITE_URL       = os.getenv("WP_SITE_URL", "https://lucas.vn").rstrip("/")
 WP_USERNAME       = os.getenv("WP_USERNAME")
 WP_APP_PASSWORD   = os.getenv("WP_APP_PASSWORD")
-CLAUDE_MODEL      = "claude-opus-4-8"
+CLAUDE_MODEL      = "claude-3-5-sonnet-20240620"
 
 ULANZI_URL        = "https://lucas.vn/danh-muc/phu-kien-ulanzi"
 HISTORY_FILE      = Path(__file__).parent / "seo_history.json"
