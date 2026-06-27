@@ -101,7 +101,7 @@ def main():
             break
 
     # Lấy danh sách các bài cần publish (status DRAFT hoặc WP_DRAFT). Giới hạn số bài mỗi lần chạy
-    MAX_PUBLISH = int(os.getenv("MAX_PUBLISH", "2"))
+    MAX_PUBLISH = int(os.getenv("MAX_PUBLISH", "1"))
     publish_indices = []
     for i, row in enumerate(rows):
         if row.get("Status") in ("DRAFT", "WP_DRAFT"):
