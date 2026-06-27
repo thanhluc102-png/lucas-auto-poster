@@ -103,7 +103,7 @@ def _wrap(draw, text, font, max_w):
     return lines
 
 
-def create_seo_thumbnail(image_src, title, output_path="seo_thumbnail.png", price=""):
+def create_seo_thumbnail(image_src, title, output_path="seo_thumbnail.png", price="", kicker="PHỤ KIỆN ULANZI"):
     # price được giữ trong chữ ký để tương thích, nhưng KHÔNG hiển thị (giữ tính tò mò).
 
     # ---- Nền gradient + glow sạch ----
@@ -175,9 +175,10 @@ def create_seo_thumbnail(image_src, title, output_path="seo_thumbnail.png", pric
     else:
         cursor_y += 16
 
-    # Kicker label "PHỤ KIỆN ULANZI"
+    # Kicker label
     kf = _font(True, 22)
-    kick = "PHỤ KIỆN ULANZI"
+    kick = kicker if kicker else "PHỤ KIỆN LUCAS.VN"
+    kick = kick.upper()
     kw = draw.textlength(kick, font=kf)
     draw.rounded_rectangle([text_x, cursor_y, text_x + int(kw) + 36, cursor_y + 40],
                            radius=20, fill=(255, 255, 255, 28))
