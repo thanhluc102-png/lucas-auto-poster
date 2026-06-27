@@ -2,9 +2,10 @@ name: Auto Post to Facebook
 
 on:
   schedule:
-    # 01:00 UTC = 08:00 sáng giờ VN
-    # 14:00 UTC = 21:00 tối giờ VN
-    - cron: '15 1,14 * * *'
+    # 00:43 UTC = 07:43 sáng giờ VN
+    # 13:43 UTC = 20:43 tối giờ VN
+    # (Dùng phút số lẻ 43 để tránh bị nghẽn hàng đợi trên GitHub Actions)
+    - cron: '43 0,13 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 permissions:
