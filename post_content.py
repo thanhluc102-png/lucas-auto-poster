@@ -53,80 +53,78 @@ def main():
                 return b
         return "Other"
 
-    # Tìm brand của bài cuối cùng đã POSTED
+    # Tìm brand của bài cuối cùng đã POSTED (giữ lại cho các mục tiêu future, không dùng hiện tại)
     last_posted_brand = None
     for row in reversed(rows):
         if row.get("Status") == "POSTED":
             last_posted_brand = get_brand(row.get("Title", ""))
             break
 
-    # Tìm bài đầu tiên có trạng thái PENDING hoặc APPROVED
-    target_idx = -1
-    prod = None
-    
-    # Ưu tiên tìm bài có brand khác với bài vừa đăng
+    # Lấy danh sách các bài cần publish (status DRAFT). Giới hạn số bài mỗi lần chạy
+    MAX_PUBLISH = int(os.getenv("MAX_PUBLISH", "2"))
+    publish_indices = []
     for i, row in enumerate(rows):
-        if row.get("Status") in ["APPROVED", "PENDING"]:
-            if get_brand(row.get("Title", "")) != last_posted_brand:
-                prod = row
-                target_idx = i
+        if row.get("Status") == "DRAFT":
+            publish_indices.append(i)
+            if len(publish_indices) >= MAX_PUBLISH:
                 break
-                
-    # Nếu không có brand khác (hoặc đây là bài đầu tiên), lấy bài PENDING đầu tiên
-    if not prod:
-        for i, row in enumerate(rows):
-            if row.get("Status") in ["APPROVED", "PENDING"]:
-                prod = row
-                target_idx = i
-                break
-            
-    if not prod:
-        print("[!] Không tìm thấy bài viết nào đang ở trạng thái chờ duyệt (PENDING/APPROVED).")
-        print("[*] Đã quét hết sản phẩm hiện có trên website. Hãy chờ web cập nhật thêm sản phẩm mới.")
-        return
-        
-    print(f"[*] Đang chuẩn bị đăng sản phẩm: {prod['Title']}")
-    
-    try:
-        # 1. Thiết kế ảnh
-        banner_path = create_product_banner(prod['ImageURL'], prod['Title'], "temp_banner_post.png")
-        
-        # 2. Đăng lên Facebook
-        if DRY_RUN:
-            print(f"[!] Đang ở chế độ DRY_RUN = True -> KHÔNG đăng lên Facebook. Bạn có thể xem thử ảnh tại {banner_path}")
-            # Giả lập post thành công
-            rows[target_idx]["Status"] = "POSTED"
-        else:
-            post_id = post_to_facebook(banner_path, prod['Caption'])
-            if post_id:
-                comment_text = f"👉 Xem chi tiết và đặt mua sản phẩm tại đây: {prod['Link']}"
-                comment_on_post(post_id, comment_text)
-                
-                # Bơm ảnh lên public URL để đăng sang Insta / Threads
-                public_url = upload_image_to_wordpress(banner_path)
-                if public_url:
-                    ig_caption = f"{prod['Caption']}\n\n👉 Mua ngay tại: {prod['Link']}"
-                    post_to_instagram(public_url, ig_caption)
-                    post_to_threads(public_url, ig_caption)
-                
-                rows[target_idx]["Status"] = "POSTED"
-                
-                # Cập nhật history
-                history = load_history()
-                if prod['Link'] not in history:
-                    history.append(prod['Link'])
-                save_history(history)
-            else:
-                print("[!] Quá trình đăng bài thất bại.")
-                sys.exit(1)
-                
-        # Dọn dẹp ảnh tạm
-        if os.path.exists(banner_path):
-            os.remove(banner_path)
-            
-    except Exception as e:
-        print(f"[!] Lỗi khi xử lý đăng bài: {e}")
 
+    if not publish_indices:
+        print("[!] Không có bài DRAFT nào để publish.")
+        return
+
+    for target_idx in publish_indices:
+        prod = rows[target_idx]
+        print(f"[*] Đang chuẩn bị đăng sản phẩm: {prod['Title']}")
+        # Tái tạo caption bằng AI
+        try:
+            from ai_generator import generate_social_posts
+            ai_result = generate_social_posts(prod["Title"], prod["Link"])
+            caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
+            prod["Caption"] = caption
+        except Exception as e:
+            print(f"[!] Lỗi tạo caption cho {prod['Title']}: {e}")
+            continue
+
+        try:
+            # 1. Thiết kế ảnh banner (JPEG)
+            banner_path = create_product_banner(prod["ImageURL"], prod["Title"], "temp_banner_post.jpg")
+
+            # 2. Đăng lên Facebook (hoặc DRY_RUN)
+            if DRY_RUN:
+                print(f"[!] DRY_RUN: sẽ không đăng lên Facebook, banner tại {banner_path}")
+                rows[target_idx]["Status"] = "POSTED"
+            else:
+                post_id = post_to_facebook(banner_path, prod["Caption"])
+                if post_id:
+                    comment_text = f"👉 Xem chi tiết và đặt mua sản phẩm tại đây: {prod['Link']}"
+                    comment_on_post(post_id, comment_text)
+
+                    # Đăng lên Instagram & Threads
+                    public_url = upload_image_to_wordpress(banner_path)
+                    if public_url:
+                        ig_caption = f"{prod['Caption']}\n\n👉 Mua ngay tại: {prod['Link']}"
+                        post_to_instagram(public_url, ig_caption)
+                        post_to_threads(public_url, ig_caption)
+
+                    rows[target_idx]["Status"] = "POSTED"
+
+                    # Cập nhật history
+                    history = load_history()
+                    if prod["Link"] not in history:
+                        history.append(prod["Link"])
+                    save_history(history)
+                else:
+                    print("[!] Đăng Facebook thất bại, bỏ qua bài này.")
+                    continue
+
+            # Dọn dẹp ảnh tạm
+            if os.path.exists(banner_path):
+                os.remove(banner_path)
+
+        except Exception as e:
+            print(f"[!] Lỗi khi xử lý bài {prod['Title']}: {e}")
+            continue
     # Ghi lại CSV với Status mới
     with open(CSV_FILE, "w", encoding="utf-8", newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

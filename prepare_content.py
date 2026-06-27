@@ -31,8 +31,13 @@ def main():
     print("📋 CHUẨN BỊ NỘI DUNG AUTO POSTER (Duyệt qua CSV)")
     print("==================================================")
     
-    # 1. Quét web
-    products = get_new_products()
+    # 1. Quét web cho các danh mục mục tiêu
+    TARGET_BRANDS = ["lisen", "aulumu", "inateck"]
+    products = []
+    for brand in TARGET_BRANDS:
+        # Thiết lập tạm thời URL danh mục cho scraper
+        os.environ["TARGET_CATEGORY_URL"] = f"https://lucas.vn/thuong-hieu/{brand}"
+        products.extend(get_new_products())
     
     # 2. Lọc sản phẩm đã đăng hoặc đã có trong CSV
     history = load_history()
@@ -50,7 +55,7 @@ def main():
     file_exists = os.path.exists(CSV_FILE)
     
     with open(CSV_FILE, "a", encoding="utf-8", newline='') as f:
-        fieldnames = ["Status", "Title", "Link", "ImageURL", "Caption"]
+        fieldnames = ["Status", "Title", "Link", "ImageURL", "Caption", "Tag"]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         
         if not file_exists:
@@ -64,13 +69,14 @@ def main():
                 ai_result = generate_social_posts(prod['title'], prod['link'])
                 caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
                 writer.writerow({
-                    "Status": "PENDING", # Mặc định là chờ duyệt
+                    "Status": "DRAFT",
                     "Title": prod['title'],
                     "Link": prod['link'],
                     "ImageURL": prod['thumbnail'],
-                    "Caption": caption
+                    "Caption": caption,
+                    "Tag": "lucas.vn"
                 })
-                print("[+] Đã lưu vào content_plan.csv với trạng thái PENDING")
+                print("[+] Đã lưu vào content_plan.csv với trạng thái DRAFT và Tag lucas.vn")
             except Exception as e:
                 print(f"[!] Lỗi AI khi xử lý sản phẩm {prod['title']}: {e}")
 
