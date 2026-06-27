@@ -2,6 +2,9 @@ import os
 import sys
 import json
 import csv
+import base64
+import requests
+from urllib.parse import urljoin
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -9,6 +12,35 @@ from image_processor import create_product_banner
 from image_uploader import upload_image_to_wordpress
 from facebook_poster import post_to_facebook, comment_on_post, post_to_instagram, post_to_threads
 from prepare_content import main as fetch_new_products
+
+def publish_wp_post(post_id):
+    wp_site_url = os.getenv("WP_SITE_URL", "https://lucas.vn").strip().strip('"').strip("'")
+    wp_username = os.getenv("WP_USERNAME").strip().strip('"').strip("'")
+    wp_app_password = os.getenv("WP_APP_PASSWORD").strip().strip('"').strip("'")
+    
+    if not all([wp_site_url, wp_username, wp_app_password]):
+        print("[!] Thiếu thông tin cấu hình WordPress trong .env để publish bài viết.")
+        return False
+        
+    url = urljoin(wp_site_url, f"/wp-json/wp/v2/posts/{post_id}")
+    auth = base64.b64encode(f"{wp_username}:{wp_app_password}".encode()).decode()
+    headers = {
+        "Authorization": f"Basic {auth}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "status": "publish"
+    }
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=20)
+        if r.status_code == 200:
+            print(f"[+] Đã chuyển trạng thái bài viết WP {post_id} thành PUBLISHED công khai.")
+            return True
+        else:
+            print(f"[!] Lỗi chuyển trạng thái bài viết WP {post_id}: {r.status_code} {r.text}")
+    except Exception as e:
+        print(f"[!] Lỗi kết nối khi chuyển trạng thái bài viết WP {post_id}: {e}")
+    return False
 
 HISTORY_FILE = "history.json"
 CSV_FILE = "content_plan.csv"
@@ -60,11 +92,11 @@ def main():
             last_posted_brand = get_brand(row.get("Title", ""))
             break
 
-    # Lấy danh sách các bài cần publish (status DRAFT). Giới hạn số bài mỗi lần chạy
+    # Lấy danh sách các bài cần publish (status DRAFT hoặc WP_DRAFT). Giới hạn số bài mỗi lần chạy
     MAX_PUBLISH = int(os.getenv("MAX_PUBLISH", "2"))
     publish_indices = []
     for i, row in enumerate(rows):
-        if row.get("Status") == "DRAFT":
+        if row.get("Status") in ("DRAFT", "WP_DRAFT"):
             publish_indices.append(i)
             if len(publish_indices) >= MAX_PUBLISH:
                 break
@@ -106,6 +138,11 @@ def main():
                         ig_caption = f"{prod['Caption']}\n\n👉 Mua ngay tại: {prod['Link']}"
                         post_to_instagram(public_url, ig_caption)
                         post_to_threads(public_url, ig_caption)
+
+                    # Chuyển trạng thái bài viết WordPress thành công khai nếu có WP_ID
+                    wp_id = prod.get("WP_ID")
+                    if wp_id:
+                        publish_wp_post(wp_id)
 
                     rows[target_idx]["Status"] = "POSTED"
 
