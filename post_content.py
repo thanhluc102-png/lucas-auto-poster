@@ -64,6 +64,14 @@ def main():
     # TỰ ĐỘNG QUÉT SẢN PHẨM MỚI TỪ WEBSITE VÀO CSV
     print("[*] Đang kiểm tra xem có sản phẩm nào mới trên Website không...")
     fetch_new_products()
+
+    # TỰ ĐỘNG TẠO BÀI VIẾT SEO NHÁP TRÊN WORDPRESS CHO CÁC SẢN PHẨM MỚI
+    print("[*] Đang tự động tạo bài viết SEO nháp trên WordPress...")
+    try:
+        from create_wp_drafts import main as create_wp_drafts
+        create_wp_drafts()
+    except Exception as e:
+        print(f"[!] Lỗi khi tự động tạo nháp trên WordPress: {e}")
     
     if not os.path.exists(CSV_FILE):
         print(f"[!] Vẫn không tìm thấy file {CSV_FILE}.")
