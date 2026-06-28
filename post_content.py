@@ -84,7 +84,15 @@ def main():
         fieldnames = reader.fieldnames
         for row in reader:
             rows.append(row)
-            
+
+    def save_csv():
+        # Lưu NGAY sau mỗi bài đã đăng để tránh đăng lại (trùng) nếu lần chạy lỗi giữa chừng
+        with open(CSV_FILE, "w", encoding="utf-8", newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
+
     BRANDS = ['Thule', 'Ulanzi', 'Inateck', 'LISEN', 'WiWU', 'HyperWork', 'Anker', 'Sharge', 'Tomtoc', 'Spigen', 'MOFT', 'Zagg']
     def get_brand(title):
         title_lower = title.lower()
@@ -116,15 +124,16 @@ def main():
     for target_idx in publish_indices:
         prod = rows[target_idx]
         print(f"[*] Đang chuẩn bị đăng sản phẩm: {prod['Title']}")
-        # Tái tạo caption bằng AI
-        try:
-            from ai_generator import generate_social_posts
-            ai_result = generate_social_posts(prod["Title"], prod["Link"])
-            caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
-            prod["Caption"] = caption
-        except Exception as e:
-            print(f"[!] Lỗi tạo caption cho {prod['Title']}: {e}")
-            continue
+        # Nếu chưa có caption thì mới dùng AI để tạo
+        if not prod.get("Caption") or prod.get("Caption") == "None":
+            try:
+                from ai_generator import generate_social_posts
+                ai_result = generate_social_posts(prod["Title"], prod["Link"])
+                caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
+                prod["Caption"] = caption
+            except Exception as e:
+                print(f"[!] Lỗi tạo caption cho {prod['Title']}: {e}")
+                continue
 
         try:
             # 1. Thiết kế ảnh banner (JPEG)
@@ -164,17 +173,17 @@ def main():
                     continue
 
             # Dọn dẹp ảnh tạm
-            if os.path.exists(banner_path):
+            if banner_path and os.path.exists(banner_path):
                 os.remove(banner_path)
+
+            # Lưu trạng thái ngay sau mỗi bài (chống đăng trùng)
+            save_csv()
 
         except Exception as e:
             print(f"[!] Lỗi khi xử lý bài {prod['Title']}: {e}")
             continue
-    # Ghi lại CSV với Status mới
-    with open(CSV_FILE, "w", encoding="utf-8", newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    # Ghi lại CSV lần cuối cho chắc
+    save_csv()
         
     print("\n[+] Hoàn tất kịch bản. Chúc một ngày tốt lành!")
 

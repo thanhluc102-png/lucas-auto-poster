@@ -42,6 +42,7 @@ def get_brand_kicker(title):
         'lisen': 'THƯƠNG HIỆU LISEN',
         'aulumu': 'THƯƠNG HIỆU AULUMU',
         'inateck': 'THƯƠNG HIỆU INATECK',
+        'thule': 'THƯƠNG HIỆU THULE',
         'ulanzi': 'PHỤ KIỆN ULANZI',
         'wiwu': 'THƯƠNG HIỆU WIWU',
         'hyperwork': 'PHỤ KIỆN HYPERWORK',
@@ -109,9 +110,14 @@ Thông tin sản phẩm:
 - Mô tả ngắn: {detail.get('short_desc', '')}
 - Mô tả đầy đủ: {detail.get('long_desc', '')}
 
+Phong cách tiêu đề mẫu (giật tít, kích thích tò mò, vẫn chứa từ khóa):
+- "Đế Sạc 4-in-1 Aulumu M01: Tiền Nào Của Nấy, Có Thực Sự Đỉnh?"
+- "Giá Đỡ AULUMU G09 MagSafe: Có Đáng Cho Dân Chơi Công Nghệ?"
+- "Đánh Giá Ốp iPhone 17 Aulumu Aramid Fiber: Mỏng, Nhẹ Có Đủ Bảo Vệ?"
+
 Yêu cầu BẮT BUỘC — Trả về DUY NHẤT một JSON hợp lệ, không có text ngoài JSON:
 {{
-  "seo_title": "Tiêu đề bài viết 55-60 ký tự, có từ khóa chính, hấp dẫn",
+  "seo_title": "Tiêu đề 55-65 ký tự theo đúng phong cách mẫu ở trên: CỰC giật tít, kích thích tò mò/đặt câu hỏi, thôi thúc click ngay, NHƯNG bắt buộc chứa từ khóa chính (tên/thương hiệu + loại sản phẩm) để chuẩn SEO. Không bọc dấu ngoặc kép ngoài cùng",
   "meta_description": "Meta description 150-160 ký tự, tóm tắt lợi ích chính",
   "focus_keyword": "Từ khóa SEO chính (ví dụ: Ulanzi D200X)",
   "slug": "slug-url-tieng-viet-khong-dau",
@@ -164,10 +170,15 @@ def inject_images_into_content(content: str, gallery_urls: list) -> str:
 def upload_media_to_wp(image_path, filename):
     url = urljoin(WP_URL, "/wp-json/wp/v2/media")
     auth = base64.b64encode(f"{WP_USER}:{WP_PASSWORD}".encode()).decode()
+    ext = os.path.splitext(filename)[1].lower()
+    content_type = {
+        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".webp": "image/webp", ".gif": "image/gif",
+    }.get(ext, "image/png")
     headers = {
         "Authorization": f"Basic {auth}",
         "Content-Disposition": f"attachment; filename={filename}",
-        "Content-Type": "image/png",
+        "Content-Type": content_type,
     }
     try:
         with open(image_path, "rb") as f:
@@ -178,6 +189,30 @@ def upload_media_to_wp(image_path, filename):
         return media_id
     except Exception as e:
         log(f"[!] Lỗi upload ảnh: {e}")
+        return None
+
+
+def upload_image_url_to_wp(image_url, base_name):
+    """Tải ảnh từ URL về rồi upload làm media (dùng làm fallback khi dựng thumbnail lỗi)."""
+    if not image_url:
+        return None
+    try:
+        r = requests.get(image_url, headers=HEADERS_SCRAPE, timeout=30)
+        r.raise_for_status()
+        ext = os.path.splitext(image_url.split("?")[0])[1].lower()
+        if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+            ext = ".jpg"
+        tmp = f"/tmp/orig_{int(time.time())}{ext}"
+        with open(tmp, "wb") as f:
+            f.write(r.content)
+        media_id = upload_media_to_wp(tmp, f"{base_name}{ext}")
+        try:
+            os.remove(tmp)
+        except Exception:
+            pass
+        return media_id
+    except Exception as e:
+        log(f"[!] Lỗi tải/upload ảnh gốc fallback: {e}")
         return None
 
 def get_or_create_tag(tag_name: str) -> int:
@@ -227,22 +262,28 @@ def create_wp_draft(row: dict, default_tag_id: int = None) -> dict:
     if detail.get('gallery'):
         article['content'] = inject_images_into_content(article['content'], detail['gallery'])
         
-    # 4. Generate branded thumbnail
-    from seo_make_thumbnail import create_seo_thumbnail
+    # 4. Generate branded thumbnail (có fallback: dùng ảnh sản phẩm gốc nếu dựng lỗi)
     tmp_path = f"/tmp/seo_thumb_{int(time.time())}.png"
     kicker = get_brand_kicker(row['Title'])
+    safe_name = re.sub(r'[^a-z0-9]', '-', row['Title'].lower())[:40] or "lucas"
     media_id = None
     try:
+        from seo_make_thumbnail import create_seo_thumbnail
         thumb_ok = create_seo_thumbnail(row['ImageURL'], row['Title'], tmp_path, kicker=kicker)
         if thumb_ok and os.path.exists(tmp_path):
-            safe_name = re.sub(r'[^a-z0-9]', '-', row['Title'].lower())[:40]
             media_id = upload_media_to_wp(tmp_path, f"{safe_name}-thumbnail.png")
             try:
                 os.remove(tmp_path)
-            except:
+            except Exception:
                 pass
+        else:
+            log("[!] Dựng thumbnail thất bại → fallback dùng ảnh sản phẩm gốc.")
+            media_id = upload_image_url_to_wp(row.get('ImageURL'), f"{safe_name}-original")
     except Exception as e:
-        log(f"[!] Lỗi khi xử lý ảnh đại diện: {e}")
+        log(f"[!] Lỗi khi xử lý ảnh đại diện: {e} → fallback ảnh gốc.")
+        media_id = upload_image_url_to_wp(row.get('ImageURL'), f"{safe_name}-original")
+    if not media_id:
+        log(f"[!] CẢNH BÁO: bài '{row['Title']}' sẽ không có ảnh đại diện.")
         
     # 5. Get Tag IDs from WordPress
     tag_ids = []
@@ -323,23 +364,35 @@ def main():
     # Get or create tag id for "lucas.vn"
     tag_id = get_or_create_tag("lucas.vn")
     log(f"[*] tag 'lucas.vn' ID is {tag_id}")
-    
-    updated = False
-    for i, row in enumerate(rows):
-        if row.get('Status') == 'DRAFT':
-            log(f"[*] Processing draft: {row['Title']}")
-            rows[i] = create_wp_draft(row, tag_id)
-            updated = True
-            
-    if updated:
-        # Write back CSV
+
+    def write_csv():
+        # Lưu CSV NGAY sau mỗi bài: nếu lần chạy bị crash giữa chừng cũng không
+        # tạo lại nháp trùng ở lần sau (nháp đã đổi Status -> WP_DRAFT được giữ lại).
         with open(CSV_PATH, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
-        log('[+] CSV updated with WP draft information.')
+
+    # Nhận cả 'DRAFT' lẫn 'PENDING' làm hàng chờ tạo nháp (thống nhất vocabulary cũ/mới)
+    TODRAFT_STATUSES = {'DRAFT', 'PENDING'}
+    # Giới hạn số nháp mỗi lần chạy để tránh gọi API/timeout hàng loạt khi tồn đọng lớn
+    MAX_DRAFTS = int(os.getenv("MAX_DRAFTS", "5"))
+
+    processed = 0
+    for i, row in enumerate(rows):
+        if row.get('Status') in TODRAFT_STATUSES:
+            log(f"[*] Processing draft ({processed + 1}/{MAX_DRAFTS}): {row['Title']}")
+            rows[i] = create_wp_draft(row, tag_id)
+            write_csv()
+            processed += 1
+            if processed >= MAX_DRAFTS:
+                log(f"[*] Đã đạt giới hạn {MAX_DRAFTS} nháp/lần chạy, dừng tạo thêm.")
+                break
+
+    if processed:
+        log(f'[+] CSV updated — đã xử lý {processed} nháp WP.')
     else:
-        log('[*] No DRAFT entries found in CSV.')
+        log('[*] No DRAFT/PENDING entries found in CSV.')
 
 if __name__ == '__main__':
     main()

@@ -8,7 +8,7 @@ Có thể gọi 2 cách:
   1) CLI:   python3 seo_make_thumbnail.py "<image_url_or_path>" "<title>" [output.png]
   2) Import: from seo_make_thumbnail import create_seo_thumbnail
 """
-import os, sys, io, requests
+import os, sys, io, re, requests
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -45,16 +45,38 @@ def _font(bold, size):
             return ImageFont.load_default()
 
 
+def _http_image(url):
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    return Image.open(io.BytesIO(r.content)).convert("RGBA")
+
+
 def _load_image(src):
-    """Tải ảnh sản phẩm từ URL hoặc đường dẫn local -> RGBA."""
+    """Tải ảnh sản phẩm từ URL hoặc đường dẫn local -> RGBA.
+    Trả None nếu KHÔNG tải được (để caller biết mà fallback, không dựng card trắng).
+    Với URL full-size của WooCommerce, nếu 404 sẽ thử thêm các bản resize phổ biến."""
+    if not src:
+        return None
     try:
         if str(src).startswith("http"):
-            r = requests.get(src, headers=HEADERS, timeout=20)
-            r.raise_for_status()
-            img = Image.open(io.BytesIO(r.content))
-        else:
-            img = Image.open(src)
-        return img.convert("RGBA")
+            candidates = [src]
+            # URL full-size (không có hậu tố -WxH) thì thử thêm bản resize hay tồn tại
+            if not re.search(r"-\d+x\d+\.(jpg|jpeg|png|webp)$", src, re.I):
+                m = re.search(r"^(.*)\.(jpg|jpeg|png|webp)$", src, re.I)
+                if m:
+                    base, ext = m.group(1), m.group(2)
+                    candidates += [f"{base}-768x768.{ext}",
+                                   f"{base}-600x600.{ext}",
+                                   f"{base}-300x300.{ext}"]
+            last_err = None
+            for url in candidates:
+                for _ in range(2):  # mỗi URL thử 2 lần phòng lỗi mạng tạm thời
+                    try:
+                        return _http_image(url)
+                    except Exception as e:
+                        last_err = e
+            raise last_err or RuntimeError("Không có URL ảnh hợp lệ")
+        return Image.open(src).convert("RGBA")
     except Exception as e:
         print(f"[!] Không tải được ảnh sản phẩm: {e}", file=sys.stderr)
         return None
@@ -106,6 +128,12 @@ def _wrap(draw, text, font, max_w):
 def create_seo_thumbnail(image_src, title, output_path="seo_thumbnail.png", price="", kicker="PHỤ KIỆN ULANZI"):
     # price được giữ trong chữ ký để tương thích, nhưng KHÔNG hiển thị (giữ tính tò mò).
 
+    # ---- Tải ảnh sản phẩm TRƯỚC: nếu hỏng thì trả None để caller fallback ----
+    prod = _load_image(image_src)
+    if prod is None:
+        print("[!] Bỏ dựng thumbnail: không tải được ảnh sản phẩm.", file=sys.stderr)
+        return None
+
     # ---- Nền gradient + glow sạch ----
     img = _gradient_bg(NAVY, EMERALD_BG)
 
@@ -136,15 +164,13 @@ def create_seo_thumbnail(image_src, title, output_path="seo_thumbnail.png", pric
     img.alpha_composite(card, (card_x, card_y))
 
     # ---- Ảnh sản phẩm TO (ít padding) ----
-    prod = _load_image(image_src)
-    if prod:
-        inner = 34
-        box_w, box_h = card_w - inner * 2, card_h - inner * 2
-        p = prod.copy()
-        p.thumbnail((box_w, box_h), Image.LANCZOS)
-        px = card_x + (card_w - p.width) // 2
-        py = card_y + (card_h - p.height) // 2
-        img.alpha_composite(p, (px, py))
+    inner = 34
+    box_w, box_h = card_w - inner * 2, card_h - inner * 2
+    p = prod.copy()
+    p.thumbnail((box_w, box_h), Image.LANCZOS)
+    px = card_x + (card_w - p.width) // 2
+    py = card_y + (card_h - p.height) // 2
+    img.alpha_composite(p, (px, py))
 
     # ---- Tag "MỚI VỀ" góc trên card ----
     tag_font = _font(True, 23)

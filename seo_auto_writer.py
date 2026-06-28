@@ -305,21 +305,41 @@ def main():
             article["content"], detail["gallery"]
         )
 
-    # 7. Tạo thumbnail bằng template chuẩn SEO
-    from seo_make_thumbnail import create_seo_thumbnail
+    # 7. Tạo thumbnail bằng template chuẩn SEO (fallback ảnh gốc nếu dựng lỗi)
     tmp_path = f"/tmp/seo_thumb_{int(time.time())}.png"
-    thumb_ok = create_seo_thumbnail(product["thumbnail"], product["title"], tmp_path, kicker="PHỤ KIỆN LISEN")
+    safe_name = re.sub(r'[^a-z0-9]', '-', product['title'].lower())[:40] or "lucas"
+    media_id = None
+    try:
+        from seo_make_thumbnail import create_seo_thumbnail
+        thumb_ok = create_seo_thumbnail(product["thumbnail"], product["title"], tmp_path, kicker="PHỤ KIỆN LISEN")
+    except Exception as e:
+        log(f"[!] Lỗi dựng thumbnail: {e}")
+        thumb_ok = None
 
     # 8. Upload thumbnail lên WordPress
-    media_id = None
-    if thumb_ok:
-        safe_name = re.sub(r'[^a-z0-9]', '-', product['title'].lower())[:40]
+    if thumb_ok and os.path.exists(tmp_path):
         media_id = upload_media_to_wp(tmp_path, f"{safe_name}-thumbnail.png")
-        # Dọn file tạm
         try:
             os.remove(tmp_path)
         except Exception:
             pass
+    else:
+        # Fallback: tải ảnh sản phẩm gốc về rồi upload làm ảnh đại diện
+        log("[!] Dựng thumbnail thất bại → fallback ảnh sản phẩm gốc.")
+        try:
+            r = requests.get(product["thumbnail"], headers=HEADERS_SCRAPE, timeout=30)
+            r.raise_for_status()
+            ext = os.path.splitext(product["thumbnail"].split("?")[0])[1].lower() or ".jpg"
+            fb_path = f"/tmp/orig_{int(time.time())}{ext}"
+            with open(fb_path, "wb") as f:
+                f.write(r.content)
+            media_id = upload_media_to_wp(fb_path, f"{safe_name}-original{ext}")
+            try:
+                os.remove(fb_path)
+            except Exception:
+                pass
+        except Exception as e:
+            log(f"[!] Fallback ảnh gốc cũng lỗi: {e}")
 
     # 9. Đăng bài lên WordPress
     post_url = publish_to_wordpress(article, media_id, product["link"])

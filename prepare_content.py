@@ -55,16 +55,17 @@ def main():
     file_exists = os.path.exists(CSV_FILE)
     
     with open(CSV_FILE, "a", encoding="utf-8", newline='') as f:
-        fieldnames = ["Status", "Title", "Link", "ImageURL", "Caption", "Tag"]
+        # Giữ đúng thứ tự cột như pipeline (có WP_ID) để hàng append không lệch cột
+        fieldnames = ["Status", "Title", "Link", "ImageURL", "Caption", "Tag", "WP_ID"]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
-        
+
         if not file_exists:
             writer.writeheader()
-        
+
         for i, prod in enumerate(new_products):
             print(f"\n--- Đang xử lý sản phẩm {i+1}/{len(new_products)} ---")
             print(f"Tên: {prod['title']}")
-            
+
             try:
                 ai_result = generate_social_posts(prod['title'], prod['link'])
                 caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
@@ -74,7 +75,8 @@ def main():
                     "Link": prod['link'],
                     "ImageURL": prod['thumbnail'],
                     "Caption": caption,
-                    "Tag": "lucas.vn"
+                    "Tag": "lucas.vn",
+                    "WP_ID": ""
                 })
                 print("[+] Đã lưu vào content_plan.csv với trạng thái DRAFT và Tag lucas.vn")
             except Exception as e:

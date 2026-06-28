@@ -18,7 +18,7 @@ def post_to_facebook(image_path: str, caption: str) -> dict:
     url = f"https://graph.facebook.com/v20.0/{page_id}/photos"
     
     payload = {
-        "caption": caption,
+        "message": caption,
         "access_token": page_token
     }
     

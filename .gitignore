@@ -14,6 +14,7 @@ venv.bak/
 
 # History and temp
 # history.json (We need this tracked by Git)
+logs/
 *.png
 !logo.png
 *.jpg
