@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from scraper import get_new_products
-from ai_generator import generate_social_posts
 
 HISTORY_FILE = "history.json"
 CSV_FILE = "content_plan.csv"
@@ -67,20 +66,19 @@ def main():
             print(f"Tên: {prod['title']}")
 
             try:
-                ai_result = generate_social_posts(prod['title'], prod['link'])
-                caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
+                # Web-only: KHÔNG sinh caption mạng xã hội nữa (tiết kiệm gọi AI + bớt điểm lỗi)
                 writer.writerow({
                     "Status": "DRAFT",
                     "Title": prod['title'],
                     "Link": prod['link'],
                     "ImageURL": prod['thumbnail'],
-                    "Caption": caption,
+                    "Caption": "",
                     "Tag": "lucas.vn",
                     "WP_ID": ""
                 })
                 print("[+] Đã lưu vào content_plan.csv với trạng thái DRAFT và Tag lucas.vn")
             except Exception as e:
-                print(f"[!] Lỗi AI khi xử lý sản phẩm {prod['title']}: {e}")
+                print(f"[!] Lỗi khi lưu sản phẩm {prod['title']}: {e}")
 
     print(f"\n[+] Đã hoàn tất! Vui lòng mở file '{CSV_FILE}' để xem lại nội dung.")
     print("[*] Đổi Status thành 'APPROVED' cho những bài bạn muốn đăng.")

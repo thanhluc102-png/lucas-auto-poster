@@ -8,10 +8,9 @@ from urllib.parse import urljoin
 from dotenv import load_dotenv
 load_dotenv()
 
-from image_processor import create_product_banner
-from image_uploader import upload_image_to_wordpress
-from facebook_poster import post_to_facebook, comment_on_post, post_to_instagram, post_to_threads
 from prepare_content import main as fetch_new_products
+# NOTE: Đã bỏ Facebook/Instagram/Threads + banner Playwright — pipeline giờ CHỈ đăng WordPress.
+# Các module facebook_poster / image_processor / image_uploader vẫn còn trong repo nếu sau muốn bật lại.
 
 def publish_wp_post(post_id):
     wp_site_url = os.getenv("WP_SITE_URL", "https://lucas.vn").strip().strip('"').strip("'")
@@ -108,84 +107,42 @@ def main():
             last_posted_brand = get_brand(row.get("Title", ""))
             break
 
-    # Lấy danh sách các bài cần publish (status DRAFT hoặc WP_DRAFT). Giới hạn số bài mỗi lần chạy
+    # Lấy danh sách bài cần đăng web: CHỈ những bài đã có nháp WP (WP_DRAFT + WP_ID).
+    # Giới hạn số bài mỗi lần chạy.
     MAX_PUBLISH = int(os.getenv("MAX_PUBLISH", "1"))
     publish_indices = []
     for i, row in enumerate(rows):
-        if row.get("Status") in ("DRAFT", "WP_DRAFT"):
+        if row.get("Status") == "WP_DRAFT" and (row.get("WP_ID") or "").strip():
             publish_indices.append(i)
             if len(publish_indices) >= MAX_PUBLISH:
                 break
 
     if not publish_indices:
-        print("[!] Không có bài DRAFT nào để publish.")
+        print("[!] Không có bài WP_DRAFT nào (đã tạo nháp) để đăng web.")
         return
 
     for target_idx in publish_indices:
         prod = rows[target_idx]
-        print(f"[*] Đang chuẩn bị đăng sản phẩm: {prod['Title']}")
-        # Nếu chưa có caption thì mới dùng AI để tạo
-        if not prod.get("Caption") or prod.get("Caption") == "None":
-            try:
-                from ai_generator import generate_social_posts
-                ai_result = generate_social_posts(prod["Title"], prod["Link"])
-                caption = ai_result.get("facebook", "") if isinstance(ai_result, dict) else str(ai_result)
-                prod["Caption"] = caption
-            except Exception as e:
-                print(f"[!] Lỗi tạo caption cho {prod['Title']}: {e}")
-                continue
-
+        wp_id = (prod.get("WP_ID") or "").strip()
+        print(f"[*] Đang đăng bài web: {prod['Title']} (WP_ID={wp_id})")
         try:
-            # 1. Thiết kế ảnh banner (JPEG)
-            banner_path = create_product_banner(prod["ImageURL"], prod["Title"], "temp_banner_post.jpg")
-
-            # 2. Đăng lên Facebook (hoặc DRY_RUN)
-            if DRY_RUN:
-                print(f"[!] DRY_RUN: sẽ không đăng lên Facebook, banner tại {banner_path}")
+            # Chỉ chuyển bài WordPress từ draft -> publish (không Facebook/IG/Threads)
+            if publish_wp_post(wp_id):
                 rows[target_idx]["Status"] = "POSTED"
+                history = load_history()
+                if prod["Link"] not in history:
+                    history.append(prod["Link"])
+                save_history(history)
+                save_csv()  # lưu ngay sau mỗi bài (chống đăng trùng)
+                print(f"[+] Đã đăng web: {prod['Title']}")
             else:
-                post_id = post_to_facebook(banner_path, prod["Caption"])
-                if post_id:
-                    comment_text = f"👉 Xem chi tiết và đặt mua sản phẩm tại đây: {prod['Link']}"
-                    comment_on_post(post_id, comment_text)
-
-                    # Đăng lên Instagram & Threads
-                    public_url = upload_image_to_wordpress(banner_path)
-                    if public_url:
-                        ig_caption = f"{prod['Caption']}\n\n👉 Mua ngay tại: {prod['Link']}"
-                        post_to_instagram(public_url, ig_caption)
-                        post_to_threads(public_url, ig_caption)
-
-                    # Chuyển trạng thái bài viết WordPress thành công khai nếu có WP_ID
-                    wp_id = prod.get("WP_ID")
-                    if wp_id:
-                        publish_wp_post(wp_id)
-
-                    rows[target_idx]["Status"] = "POSTED"
-
-                    # Cập nhật history
-                    history = load_history()
-                    if prod["Link"] not in history:
-                        history.append(prod["Link"])
-                    save_history(history)
-                else:
-                    print("[!] Đăng Facebook thất bại, bỏ qua bài này.")
-                    continue
-
-            # Dọn dẹp ảnh tạm
-            if banner_path and os.path.exists(banner_path):
-                os.remove(banner_path)
-
-            # Lưu trạng thái ngay sau mỗi bài (chống đăng trùng)
-            save_csv()
-
+                print(f"[!] Publish WP thất bại cho '{prod['Title']}' — giữ nguyên WP_DRAFT, thử lại lần sau.")
         except Exception as e:
-            print(f"[!] Lỗi khi xử lý bài {prod['Title']}: {e}")
+            print(f"[!] Lỗi khi đăng bài '{prod['Title']}': {e}")
             continue
-    # Ghi lại CSV lần cuối cho chắc
-    save_csv()
-        
-    print("\n[+] Hoàn tất kịch bản. Chúc một ngày tốt lành!")
+
+    save_csv()  # lưu lần cuối cho chắc
+    print("\n[+] Hoàn tất kịch bản (web-only). Chúc một ngày tốt lành!")
 
 if __name__ == "__main__":
     main()
