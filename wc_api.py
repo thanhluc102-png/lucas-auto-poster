@@ -95,6 +95,44 @@ def list_recent_products(brand_keyword: str = "", max_items: int = 30) -> list:
         return []
 
 
+def list_products_after(after_iso: str, max_pages: int = 20, per_page: int = 50) -> tuple:
+    """Lấy TẤT CẢ sản phẩm publish của TOÀN SHOP có ngày publish SAU mốc after_iso.
+    Sắp xếp cũ->mới để hàng chờ giữ đúng thứ tự thời gian.
+    Trả (list[{title, link, thumbnail, date}], newest_date_iso | None)."""
+    if not enabled():
+        return [], None
+    out, newest, page = [], None, 1
+    while page <= max_pages:
+        try:
+            r = requests.get(f"{WP_SITE_URL}/wp-json/wc/v3/products",
+                             params={"after": after_iso, "status": "publish",
+                                     "orderby": "date", "order": "asc",
+                                     "per_page": per_page, "page": page},
+                             auth=_auth(), timeout=30)
+            r.raise_for_status()
+        except Exception as e:
+            print(f"[!] WC list_products_after lỗi (trang {page}): {e}")
+            break
+        batch = r.json()
+        if not batch:
+            break
+        for p in batch:
+            name = (p.get("name") or "").strip()
+            link = p.get("permalink") or ""
+            if not name or not link:
+                continue
+            imgs = [i.get("src") for i in p.get("images", []) if i.get("src")]
+            d = p.get("date_created_gmt") or p.get("date_created") or ""
+            out.append({"title": name, "link": link,
+                        "thumbnail": imgs[0] if imgs else "", "date": d})
+            if d and (newest is None or d > newest):
+                newest = d
+        if len(batch) < per_page:
+            break
+        page += 1
+    return out, newest
+
+
 def get_product_by_slug(slug: str) -> dict | None:
     if not enabled() or not slug:
         return None

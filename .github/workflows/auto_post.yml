@@ -52,7 +52,7 @@ jobs:
         git config --global user.email "actions@github.com"
         
         # Add changed files
-        git add content_plan.csv history.json
+        git add content_plan.csv history.json last_scan.txt
         
         # Commit if there are changes
         git diff --quiet && git diff --staged --quiet || git commit -m "chore: Cập nhật trạng thái bài đăng (Auto)"
