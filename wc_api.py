@@ -53,7 +53,10 @@ def _format_price(raw) -> str:
     if not s:
         return "Liên hệ"
     try:
-        return f"{int(float(s)):,.0f}".replace(",", ".") + "₫"
+        n = int(float(s))
+        if n <= 0:                       # giá 0/âm (vd sản phẩm variable chưa set giá) -> Liên hệ
+            return "Liên hệ"
+        return f"{n:,.0f}".replace(",", ".") + "₫"
     except Exception:
         return s
 
