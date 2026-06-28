@@ -41,6 +41,8 @@ jobs:
         WP_USERNAME: ${{ secrets.WP_USERNAME }}
         WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
         TARGET_CATEGORY_URL: ${{ secrets.TARGET_CATEGORY_URL }}
+        WC_CONSUMER_KEY: ${{ secrets.WC_CONSUMER_KEY }}
+        WC_CONSUMER_SECRET: ${{ secrets.WC_CONSUMER_SECRET }}
       run: |
         python post_content.py
         

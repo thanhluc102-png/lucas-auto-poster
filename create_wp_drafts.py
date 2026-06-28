@@ -59,6 +59,17 @@ def get_brand_kicker(title):
     return "PHỤ KIỆN CAO CẤP"
 
 def scrape_product_detail(url):
+    # Ưu tiên WooCommerce REST API (mô tả/gallery/giá chuẩn), fallback scrape HTML
+    try:
+        import wc_api
+        if wc_api.enabled():
+            d = wc_api.detail_from_link(url)
+            if d:
+                log(f"[*] Lấy chi tiết qua WooCommerce API: {url}")
+                return d
+    except Exception as e:
+        log(f"[!] WC API lỗi, fallback scrape HTML: {e}")
+
     try:
         r = requests.get(url, headers=HEADERS_SCRAPE, timeout=15, allow_redirects=True)
         r.raise_for_status()
@@ -266,10 +277,11 @@ def create_wp_draft(row: dict, default_tag_id: int = None) -> dict:
     tmp_path = f"/tmp/seo_thumb_{int(time.time())}.png"
     kicker = get_brand_kicker(row['Title'])
     safe_name = re.sub(r'[^a-z0-9]', '-', row['Title'].lower())[:40] or "lucas"
+    img_src = detail.get('image') or row.get('ImageURL')  # ưu tiên ảnh full-size từ WC
     media_id = None
     try:
         from seo_make_thumbnail import create_seo_thumbnail
-        thumb_ok = create_seo_thumbnail(row['ImageURL'], row['Title'], tmp_path, kicker=kicker)
+        thumb_ok = create_seo_thumbnail(img_src, row['Title'], tmp_path, kicker=kicker)
         if thumb_ok and os.path.exists(tmp_path):
             media_id = upload_media_to_wp(tmp_path, f"{safe_name}-thumbnail.png")
             try:
@@ -278,10 +290,10 @@ def create_wp_draft(row: dict, default_tag_id: int = None) -> dict:
                 pass
         else:
             log("[!] Dựng thumbnail thất bại → fallback dùng ảnh sản phẩm gốc.")
-            media_id = upload_image_url_to_wp(row.get('ImageURL'), f"{safe_name}-original")
+            media_id = upload_image_url_to_wp(img_src, f"{safe_name}-original")
     except Exception as e:
         log(f"[!] Lỗi khi xử lý ảnh đại diện: {e} → fallback ảnh gốc.")
-        media_id = upload_image_url_to_wp(row.get('ImageURL'), f"{safe_name}-original")
+        media_id = upload_image_url_to_wp(img_src, f"{safe_name}-original")
     if not media_id:
         log(f"[!] CẢNH BÁO: bài '{row['Title']}' sẽ không có ảnh đại diện.")
         

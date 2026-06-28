@@ -25,7 +25,20 @@ def get_new_products(max_items=30):
     # Nếu URL ở trong .env kết thúc bằng '/', ta bỏ đi để nối chuỗi cho chuẩn
     if target_category_url.endswith('/'):
         target_category_url = target_category_url[:-1]
-        
+
+    # --- Ưu tiên WooCommerce REST API (tin cậy hơn scrape HTML) ---
+    try:
+        import wc_api
+        if wc_api.enabled():
+            brand = target_category_url.split("/")[-1].lower()
+            wc_products = wc_api.list_recent_products(brand_keyword=brand, max_items=max_items)
+            if wc_products:
+                print(f"[*] WooCommerce API: lấy {len(wc_products)} sản phẩm (brand~'{brand}').")
+                return wc_products
+            print("[*] WC API không trả sản phẩm phù hợp — fallback scrape HTML.")
+    except Exception as e:
+        print(f"[!] WC API lỗi ({e}) — fallback scrape HTML.")
+
     while len(results) < max_items and page <= 5:
         # Nếu URL đã có dấu '?' (ví dụ url có param) thì nối thêm '&', nếu chưa có thì dùng '?'
         if "?" in target_category_url:
