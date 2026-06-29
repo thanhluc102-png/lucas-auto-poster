@@ -11,7 +11,7 @@ def get_base64_image(image_url_or_path: str):
     """Tải ảnh và chuyển thành chuỗi Base64 để nhúng thẳng vào HTML"""
     try:
         if image_url_or_path.startswith("http"):
-            response = requests.get(image_url_or_path)
+            response = requests.get(image_url_or_path, timeout=10)
             response.raise_for_status()
             img_data = response.content
             content_type = response.headers.get("Content-Type", "image/png")

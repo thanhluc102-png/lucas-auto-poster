@@ -24,13 +24,14 @@ def post_to_facebook(image_path: str, caption: str) -> dict:
     
     print("[*] Đang gửi yêu cầu lên Facebook Graph API...")
     with open(image_path, "rb") as img_file:
-        response = requests.post(url, data=payload, files={"source": img_file})
+        response = requests.post(url, data=payload, files={"source": img_file}, timeout=30)
     
     if response.status_code != 200:
         print(f"[!] Lỗi khi đăng bài lên Facebook: {response.text}")
         return None
     
-    post_id = response.json().get("post_id")
+    res_data = response.json()
+    post_id = res_data.get("post_id") or res_data.get("id")
     print(f"[+] Đã đăng thành công lên Facebook! Post ID: {post_id}")
     return post_id
 
@@ -49,7 +50,7 @@ def comment_on_post(post_id: str, comment_text: str) -> bool:
     }
     
     print("[*] Đang tự động comment link sản phẩm...")
-    response = requests.post(url, data=payload)
+    response = requests.post(url, data=payload, timeout=30)
     if response.status_code == 200:
         print("[+] Đã comment link thành công!")
         return True
@@ -76,7 +77,7 @@ def post_to_instagram(image_url: str, caption: str) -> str:
         "access_token": page_token
     }
     
-    res = requests.post(url_media, data=payload_media)
+    res = requests.post(url_media, data=payload_media, timeout=30)
     if res.status_code != 200:
         print(f"[!] Lỗi khi tạo IG Media Container: {res.text}")
         return None
@@ -93,7 +94,7 @@ def post_to_instagram(image_url: str, caption: str) -> str:
         "access_token": page_token
     }
     
-    res_pub = requests.post(url_publish, data=payload_publish)
+    res_pub = requests.post(url_publish, data=payload_publish, timeout=30)
     if res_pub.status_code != 200:
         print(f"[!] Lỗi khi Publish IG Post: {res_pub.text}")
         return None
@@ -126,7 +127,7 @@ def post_to_threads(image_url: str, text: str) -> str:
         "access_token": threads_token
     }
     
-    res = requests.post(url_media, data=payload_media)
+    res = requests.post(url_media, data=payload_media, timeout=30)
     if res.status_code != 200:
         print(f"[!] Lỗi khi tạo Threads Container: {res.text}")
         return None
@@ -140,7 +141,7 @@ def post_to_threads(image_url: str, text: str) -> str:
         "access_token": threads_token
     }
     
-    res_pub = requests.post(url_publish, data=payload_publish)
+    res_pub = requests.post(url_publish, data=payload_publish, timeout=30)
     if res_pub.status_code != 200:
         print(f"[!] Lỗi khi Publish Threads Post: {res_pub.text}")
         return None
