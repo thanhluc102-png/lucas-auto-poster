@@ -28,7 +28,7 @@ def build_caption(item):
     stars = "⭐" * int(item.get("stars") or 5)
     buyer = item.get("buyer") or "Khách hàng"
     text = (item.get("text") or "").strip()
-    cat = item.get("category") or ""
+    cat = (item.get("category") or "").split(",")[0].strip()   # gọn như trên card
     cat_line = f"\n🛍️ {cat}" if cat else ""
     return (f"{stars} {buyer} vừa để lại đánh giá cho Lucas trên Shopee!{cat_line}\n\n"
             f"“{text}”\n\n"
