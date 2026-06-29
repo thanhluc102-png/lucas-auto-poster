@@ -1,4 +1,4 @@
-name: Auto Post to Facebook
+name: Auto Post to Web
 
 on:
   schedule:

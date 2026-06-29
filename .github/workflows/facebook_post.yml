@@ -1,4 +1,4 @@
-name: Auto Post to Facebook (Social)
+name: Auto Post to Social
 
 on:
   schedule:
