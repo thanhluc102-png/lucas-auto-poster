@@ -1,0 +1,52 @@
+name: Auto Post to Facebook (Social)
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # 11:00 sáng giờ VN (04:00 UTC) — độc lập với pipeline web
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  facebook:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        playwright install chromium
+
+    - name: Run facebook_post.py
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+        FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
+        THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+        THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+        WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+        WP_USERNAME: ${{ secrets.WP_USERNAME }}
+        WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        WC_CONSUMER_KEY: ${{ secrets.WC_CONSUMER_KEY }}
+        WC_CONSUMER_SECRET: ${{ secrets.WC_CONSUMER_SECRET }}
+      run: |
+        python facebook_post.py
+
+    - name: Commit and push FB history
+      run: |
+        git config --global user.name "GitHub Actions FB Poster"
+        git config --global user.email "actions@github.com"
+        git add fb_history.json
+        git diff --quiet && git diff --staged --quiet || git commit -m "chore: cập nhật fb_history (Auto FB)"
+        git push origin main
