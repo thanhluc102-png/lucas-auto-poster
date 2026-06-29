@@ -1,0 +1,16 @@
+{
+  "refresh_token": "49626c4e595974485a595571456e686d",
+  "access_token": "6d7556577948597a4e7a556978767353",
+  "expire_in": 14373,
+  "request_id": "e3e3e7f3555cf6c9be74b96b0bc4e200",
+  "merchant_id_list": [],
+  "shop_id_list": [
+    184622905
+  ],
+  "supplier_id_list": [],
+  "user_id_list": [],
+  "error": "",
+  "message": "",
+  "shop_id": 184622905,
+  "_obtained_at": 1782707626
+}

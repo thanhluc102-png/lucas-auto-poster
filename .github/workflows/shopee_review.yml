@@ -1,0 +1,68 @@
+name: Shopee Review Card
+
+on:
+  schedule:
+    # 02:00 UTC = 09:00 sáng giờ VN — tách khỏi lịch poster sản phẩm (00:45/13:45, 01:10/08:10)
+    - cron: '0 2 * * *'
+  workflow_dispatch:   # cho phép bấm chạy thử bằng tay
+
+permissions:
+  contents: write      # cần để commit ngược token + state Shopee
+
+# Tránh 2 lần chạy chồng nhau (đỡ conflict khi commit state)
+concurrency:
+  group: shopee-review-card
+  cancel-in-progress: false
+
+jobs:
+  shopee-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r shopee_review/requirements.txt
+
+      - name: Run Shopee review-card poster
+        env:
+          # Shopee
+          SHOPEE_PARTNER_ID: ${{ secrets.SHOPEE_PARTNER_ID }}
+          SHOPEE_PARTNER_KEY: ${{ secrets.SHOPEE_PARTNER_KEY }}
+          SHOPEE_SHOP_URL: ${{ secrets.SHOPEE_SHOP_URL }}
+          # Gemini (lọc ảnh thật/rác)
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Facebook / Instagram / Threads (dùng lại tầng poster của repo)
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          # WordPress (để lấy URL ảnh public cho IG/Threads)
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        run: |
+          python shopee_review/run_shopee_review.py
+
+      - name: Commit state (token + kho + lịch sử)
+        if: always()
+        run: |
+          git config --global user.name "GitHub Actions Shopee"
+          git config --global user.email "actions@github.com"
+          git add shopee_review/shopee_token.json shopee_review/*.json || true
+          if git diff --staged --quiet; then
+            echo "Không có thay đổi state."
+          else
+            git commit -m "chore(shopee): cập nhật token + kho review"
+            git pull --rebase origin "$GITHUB_REF_NAME" || true
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
