@@ -2,7 +2,8 @@ name: Auto Post to Facebook (Social)
 
 on:
   schedule:
-    - cron: '0 4 * * *'   # 11:00 sáng giờ VN (04:00 UTC) — độc lập với pipeline web
+    # 07:45 và 20:45 giờ VN (UTC+7) = 00:45 và 13:45 UTC -> 2 bài social/ngày
+    - cron: '45 0,13 * * *'
   workflow_dispatch:
 
 permissions:
