@@ -2,8 +2,8 @@ name: Shopee Review Card
 
 on:
   schedule:
-    # 02:00 UTC = 09:00 sáng giờ VN — tách khỏi lịch poster sản phẩm (00:45/13:45, 01:10/08:10)
-    - cron: '0 2 * * *'
+    # 02:17 UTC ≈ 09:17 sáng VN — tránh phút :00 (mốc đông, GitHub hay trễ/drop)
+    - cron: '17 2 * * *'
   workflow_dispatch:   # cho phép bấm chạy thử bằng tay
 
 permissions:
