@@ -133,7 +133,7 @@ Yêu cầu BẮT BUỘC — Trả về DUY NHẤT một JSON hợp lệ, không 
   "focus_keyword": "Từ khóa SEO chính (ví dụ: Ulanzi D200X)",
   "slug": "slug-url-tieng-viet-khong-dau",
   "tags": ["Tên thương hiệu", "Loại sản phẩm", "Tính năng nổi bật 1", "Tính năng nổi bật 2"],
-  "content": "Nội dung HTML đầy đủ của bài viết (ít nhất 800 từ). Dùng thẻ <h2>, <h3>, <p>, <ul>, <li>. KHÔNG dùng <html><body><head>. Bao gồm: giới thiệu, tính năng nổi bật, thông số kỹ thuật, đối tượng phù hợp, kết luận. Chèn từ khóa tự nhiên. Cuối bài BẮT BUỘC tạo 1 Khối Card Mua Hàng (Product Card) bằng HTML với style CSS inline đẹp mắt (viền bo tròn, bóng đổ, màu sắc nổi bật), hiển thị Tên sản phẩm, Giá bán và một Nút (Button) '🛒 MUA NGAY'. Link mua hàng: {product_link}. Giá bán: {price}."
+  "content": "Nội dung HTML đầy đủ của bài viết (ít nhất 800 từ). Dùng thẻ <h2>, <h3>, <p>, <ul>, <li>. KHÔNG dùng <html><body><head>. Bao gồm: giới thiệu, tính năng nổi bật, thông số kỹ thuật, đối tượng phù hợp, kết luận. Chèn từ khóa tự nhiên. KẾT THÚC bằng đoạn kết luận — TUYỆT ĐỐI KHÔNG tự tạo card/box/nút mua hàng (hệ thống sẽ tự chèn khối Card Mua Hàng có ảnh sản phẩm ở cuối bài)."
 }}"""
 
     log(f"[*] Đang nhờ Claude viết bài cho: {product_title[:50]}...")
@@ -250,6 +250,31 @@ def get_or_create_tag(tag_name: str) -> int:
         log(f"[!] Error handling tag '{tag_name}': {e}")
     return None
 
+def build_product_card(name: str, price: str, image_url: str, link: str) -> str:
+    """Dựng khối 'Card Mua Hàng' cố định (ảnh trái + thông tin phải), chèn cuối bài.
+    Dùng flex-wrap nên tự xuống hàng (ảnh trên / chữ dưới) khi màn hình hẹp."""
+    img_html = ""
+    if image_url:
+        img_html = (
+            '<div style="flex:1 1 200px;text-align:center;">'
+            f'<img src="{image_url}" alt="{name}" loading="lazy" '
+            'style="max-width:100%;height:auto;border-radius:12px;"/></div>'
+        )
+    return (
+        '<div style="border:2px solid #ff6b00;border-radius:16px;padding:24px;'
+        'margin:36px 0;background:#fff7f0;box-shadow:0 8px 24px rgba(255,107,0,.15);'
+        'display:flex;flex-wrap:wrap;gap:24px;align-items:center;">'
+        f'{img_html}'
+        '<div style="flex:2 1 280px;min-width:240px;">'
+        f'<h3 style="margin:0 0 10px;font-size:22px;color:#1a1a1a;line-height:1.3;">{name}</h3>'
+        f'<p style="margin:0 0 18px;font-size:28px;font-weight:bold;color:#ff6b00;">{price}</p>'
+        f'<a href="{link}" style="display:inline-block;background:#ff6b00;color:#ffffff;'
+        'padding:14px 40px;border-radius:50px;font-weight:bold;font-size:18px;'
+        'text-decoration:none;box-shadow:0 4px 12px rgba(255,107,0,.35);">🛒 MUA NGAY</a>'
+        '</div></div>'
+    )
+
+
 def create_wp_draft(row: dict, default_tag_id: int = None) -> dict:
     """Create a draft post via WP REST API.
     Returns the updated row with WP_ID and new status.
@@ -272,7 +297,13 @@ def create_wp_draft(row: dict, default_tag_id: int = None) -> dict:
     # 3. Inject gallery images
     if detail.get('gallery'):
         article['content'] = inject_images_into_content(article['content'], detail['gallery'])
-        
+
+    # 3.5 Chèn Card Mua Hàng cố định (có ẢNH sản phẩm) ở cuối bài
+    card_img = detail.get('image') or row.get('ImageURL')
+    article['content'] = article['content'] + build_product_card(
+        row['Title'], detail.get('price', 'Liên hệ'), card_img, row['Link']
+    )
+
     # 4. Generate branded thumbnail (có fallback: dùng ảnh sản phẩm gốc nếu dựng lỗi)
     tmp_path = f"/tmp/seo_thumb_{int(time.time())}.png"
     kicker = get_brand_kicker(row['Title'])
