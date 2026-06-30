@@ -2,9 +2,9 @@ name: Auto Post to Web
 
 on:
   schedule:
-    # 01:10 UTC = 08:10 sáng giờ VN
-    # 08:10 UTC = 15:10 chiều giờ VN
-    - cron: '10 1,8 * * *'
+    # Hẹn SỚM để GitHub Actions có trễ vài tiếng thì bài vẫn lên trong sáng/trưa.
+    # 21:00 UTC = 04:00 sáng giờ VN | 05:00 UTC = 12:00 trưa giờ VN
+    - cron: '0 5,21 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 permissions:
