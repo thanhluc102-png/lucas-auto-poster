@@ -256,21 +256,21 @@ def build_product_card(name: str, price: str, image_url: str, link: str) -> str:
     img_html = ""
     if image_url:
         img_html = (
-            '<div style="flex:1 1 200px;text-align:center;">'
             f'<img src="{image_url}" alt="{name}" loading="lazy" '
-            'style="max-width:100%;height:auto;border-radius:12px;"/></div>'
+            'style="width:92px;height:92px;object-fit:contain;border-radius:8px;'
+            'background:#ffffff;flex-shrink:0;"/>'
         )
     return (
-        '<div style="border:2px solid #ff6b00;border-radius:16px;padding:24px;'
-        'margin:36px 0;background:#fff7f0;box-shadow:0 8px 24px rgba(255,107,0,.15);'
-        'display:flex;flex-wrap:wrap;gap:24px;align-items:center;">'
+        '<div style="display:flex;align-items:center;gap:14px;border:1px solid #ffd9b8;'
+        'border-radius:12px;padding:12px 16px;margin:28px 0;background:#fff8f2;'
+        'box-shadow:0 2px 8px rgba(255,107,0,.08);">'
         f'{img_html}'
-        '<div style="flex:2 1 280px;min-width:240px;">'
-        f'<h3 style="margin:0 0 10px;font-size:22px;color:#1a1a1a;line-height:1.3;">{name}</h3>'
-        f'<p style="margin:0 0 18px;font-size:28px;font-weight:bold;color:#ff6b00;">{price}</p>'
+        '<div style="flex:1;min-width:0;">'
+        f'<div style="font-size:15px;font-weight:600;color:#222222;line-height:1.35;margin:0 0 4px;">{name}</div>'
+        f'<div style="font-size:19px;font-weight:700;color:#ff6b00;margin:0 0 8px;">{price}</div>'
         f'<a href="{link}" style="display:inline-block;background:#ff6b00;color:#ffffff;'
-        'padding:14px 40px;border-radius:50px;font-weight:bold;font-size:18px;'
-        'text-decoration:none;box-shadow:0 4px 12px rgba(255,107,0,.35);">🛒 MUA NGAY</a>'
+        'padding:8px 22px;border-radius:8px;font-size:14px;font-weight:600;'
+        'text-decoration:none;">🛒 MUA NGAY</a>'
         '</div></div>'
     )
 
