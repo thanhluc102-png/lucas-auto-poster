@@ -21,7 +21,7 @@ from facebook_poster import post_to_facebook, comment_on_post, post_to_instagram
 
 ENABLE_IG = os.getenv("FB_ENABLE_IG", "1") != "0"
 ENABLE_THREADS = os.getenv("FB_ENABLE_THREADS", "1") != "0"
-SHOP_URL = os.getenv("SHOPEE_SHOP_URL", "https://shopee.vn/phukienlucas")
+SHOP_URL = os.getenv("SHOPEE_SHOP_URL", "https://s.shopee.vn/70IBlq1v0D")
 
 
 def build_caption(item):
