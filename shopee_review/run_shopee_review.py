@@ -16,6 +16,12 @@ ROOT = os.path.dirname(HERE)           # repo root (chứa facebook_poster.py)
 sys.path.insert(0, HERE)
 sys.path.insert(0, ROOT)
 
+try:  # local: nạp FB/WP token từ .env; trên CI env đã có sẵn từ secrets (file .env không có -> no-op)
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(ROOT, ".env"))
+except Exception:
+    pass
+
 import shopee_reviews
 from facebook_poster import post_to_facebook, comment_on_post, post_to_instagram, post_to_threads
 
