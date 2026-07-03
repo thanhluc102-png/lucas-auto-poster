@@ -147,18 +147,22 @@ def all_items(tok):
         time.sleep(0.2)
     return names
 
+RECHECK_DAYS = 14   # sp +0 review sẽ được kiểm lại sau ngần này ngày (phòng khi có review mới)
+
 def main():
     if not (K and S):
         print("[!] Thiếu WC_CONSUMER_KEY/SECRET -> dừng."); return
-    st = load_state(); done = st.setdefault("done", {})
+    st = load_state(); done = st.setdefault("done", {}); empty = st.setdefault("empty", {})
     tok = sr._get_valid_token()
     names = all_items(tok)
     used_web = set(done.values())
+    today = datetime.date.today().isoformat()
 
-    # Xây worklist: sp chưa done, không phải WiWU/Lucas, khớp brand+mã model
+    # Xây worklist: sp chưa done, chưa trong "empty còn hạn", không WiWU/Lucas, khớp brand+mã model
     work = []
     for iid, nm in names.items():
         if str(iid) in done: continue
+        if empty.get(str(iid), "") > today: continue   # đang trong hạn "hẹn kiểm lại"
         low = nm.lower()
         if any(b in low for b in SKIP_BRANDS): continue
         m = find_web_match(nm)
@@ -167,21 +171,29 @@ def main():
         if wid in used_web: continue           # 1 web chỉ nhận từ 1 sp Shopee
         work.append((iid, nm, wid, wn))
 
-    print(f"[i] {len(names)} sp Shopee | {len(done)} đã xong | {len(work)} cặp khớp brand+mã mới.")
+    # Ưu tiên sp CŨ trước (item_id nhỏ = đăng lâu = nhiều review) -> lần chạy đầu hái hàng ngon
+    work.sort(key=lambda x: x[0])
+
+    print(f"[i] {len(names)} sp Shopee | {len(done)} đã xong | {len(empty)} hẹn kiểm lại | {len(work)} cặp đủ điều kiện.")
     if not work:
         print("[+] Không có cặp mới để đẩy. Xong."); return
 
-    total = 0
-    for iid, nm, wid, wn in work[:MAX_PRODUCTS_PER_RUN]:
+    total = 0; picked = work[:MAX_PRODUCTS_PER_RUN]
+    for iid, nm, wid, wn in picked:
         try:
             added, n, avg = import_reviews(wid, iid)
-            done[str(iid)] = wid; used_web.add(wid); total += added
+            total += added
+            if added > 0:
+                done[str(iid)] = wid; used_web.add(wid); empty.pop(str(iid), None)
+            else:
+                # chưa có review đạt -> hẹn kiểm lại sau RECHECK_DAYS ngày
+                empty[str(iid)] = (datetime.date.today() + datetime.timedelta(days=RECHECK_DAYS)).isoformat()
             print(f"  ✅ [{wid}] {wn[:42]} | +{added} review (tổng {n}, {avg}★)  <- Shopee {iid}")
             save_state(st)
         except Exception as e:
             print(f"  ⚠️ Shopee {iid} -> web {wid} lỗi: {str(e)[:80]}")
     save_state(st)
-    print(f"\nXONG lần này: {total} review, {sum(1 for _ in work[:MAX_PRODUCTS_PER_RUN])} sp. Còn lại chờ lần sau: {max(0,len(work)-MAX_PRODUCTS_PER_RUN)} cặp.")
+    print(f"\nXONG lần này: {total} review, {len(picked)} sp. Còn lại chờ lần sau: {max(0,len(work)-MAX_PRODUCTS_PER_RUN)} cặp.")
 
 if __name__ == "__main__":
     main()
