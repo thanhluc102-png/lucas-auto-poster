@@ -50,4 +50,5 @@ jobs:
         git config --global user.email "actions@github.com"
         git add fb_history.json
         git diff --quiet && git diff --staged --quiet || git commit -m "chore: cập nhật fb_history (Auto FB)"
+        git pull --rebase origin main || true
         git push origin main

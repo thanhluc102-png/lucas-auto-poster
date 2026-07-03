@@ -57,5 +57,8 @@ jobs:
         # Commit if there are changes
         git diff --quiet && git diff --staged --quiet || git commit -m "chore: Cập nhật trạng thái bài đăng (Auto)"
         
+        # Pull new changes to avoid conflict
+        git pull --rebase origin main || true
+        
         # Push changes back to main branch
         git push origin main
