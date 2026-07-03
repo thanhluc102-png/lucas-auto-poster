@@ -1,0 +1,59 @@
+name: Brand Reviews Import
+
+on:
+  schedule:
+    # 18:40 UTC ≈ 01:40 sáng VN — cách xa job "Shopee Review Card" (00:17 UTC) 12h để không giành token Shopee
+    - cron: '40 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write        # commit ngược token + state
+
+concurrency:
+  group: shopee-brand-reviews
+  cancel-in-progress: false
+
+jobs:
+  brand-reviews:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r shopee_review/requirements.txt
+
+      - name: Import brand reviews Shopee -> web
+        env:
+          SHOPEE_PARTNER_ID: ${{ secrets.SHOPEE_PARTNER_ID }}
+          SHOPEE_PARTNER_KEY: ${{ secrets.SHOPEE_PARTNER_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WC_CONSUMER_KEY: ${{ secrets.WC_CONSUMER_KEY }}
+          WC_CONSUMER_SECRET: ${{ secrets.WC_CONSUMER_SECRET }}
+        run: |
+          python shopee_review/auto_brand_reviews.py
+
+      - name: Commit state (token + tiến độ)
+        if: always()
+        run: |
+          git config --global user.name "GitHub Actions Brand"
+          git config --global user.email "actions@github.com"
+          git add shopee_review/shopee_token.json shopee_review/brand_reviews_state.json shopee_review/*.json || true
+          if git diff --staged --quiet; then
+            echo "Không có thay đổi state."
+          else
+            git commit -m "chore(brand): cập nhật token + tiến độ import review"
+            git pull --rebase origin "$GITHUB_REF_NAME" || true
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
