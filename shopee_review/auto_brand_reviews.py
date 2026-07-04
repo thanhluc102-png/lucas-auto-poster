@@ -99,13 +99,23 @@ def upload(url):
         return None
 
 def set_counts(pid):
-    rv = requests.get(f"{U}/wp-json/wc/v3/products/reviews", params={"product": pid, "per_page": 100, "status": "approved"}, auth=AUTH, timeout=30).json()
-    rs = [r.get("rating") or 5 for r in rv]; n = len(rs)
-    if not n: return 0, 0
-    avg = round(sum(rs) / n, 2); dist = {str(x): rs.count(x) for x in set(rs)}
-    requests.put(f"{U}/wp-json/wc/v3/products/{pid}", json={"average_rating": str(avg),
-        "meta_data": [{"key": "_wc_review_count", "value": n}, {"key": "_wc_average_rating", "value": str(avg)}, {"key": "_wc_rating_count", "value": dist}]}, auth=AUTH, timeout=30)
-    return n, avg
+    """Ép WooCommerce TỰ tính lại rating: tạo 1 review nháp rồi xoá -> thao tác xoá kích hoạt
+    recalc _wc_average_rating từ các review THẬT còn lại (không đụng review thật nên GIỮ ảnh).
+    (Set meta _wc_average_rating qua REST KHÔNG ăn vì là field nội bộ của WooCommerce.)"""
+    try:
+        d = requests.post(f"{U}/wp-json/wc/v3/products/reviews",
+                          json={"product_id": pid, "review": "tmp", "reviewer": "zz_tmp_calc",
+                                "reviewer_email": "zztmpcalc@shopee-import.lucas.vn", "rating": 5, "status": "approved"},
+                          auth=AUTH, timeout=30)
+        did = d.json().get("id")
+        if did:
+            time.sleep(0.6)
+            requests.delete(f"{U}/wp-json/wc/v3/products/reviews/{did}", params={"force": True}, auth=AUTH, timeout=30)
+            time.sleep(0.8)
+    except Exception:
+        pass
+    p = requests.get(f"{U}/wp-json/wc/v3/products/{pid}", auth=AUTH, params={"_fields": "average_rating,rating_count"}, timeout=30).json()
+    return int(p.get("rating_count") or 0), p.get("average_rating")
 
 def import_reviews(pid, item_id):
     cs = sr.fetch_all_comments(item_id=item_id)
@@ -129,7 +139,10 @@ def import_reviews(pid, item_id):
             body["date_created_gmt"] = datetime.datetime.fromtimestamp(int(ct), datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
         r = requests.post(f"{U}/wp-json/wc/v3/products/reviews", json=body, auth=AUTH, timeout=45)
         if r.status_code in (200, 201): added += 1; ex.add(buyer.lower())
-    n, avg = set_counts(pid)
+    if added > 0:
+        n, avg = set_counts(pid)      # ép recalc để ratingValue đúng (tránh lỗi Google aggregateRating)
+    else:
+        n, avg = 0, 0
     return added, n, avg
 
 def all_items(tok):
