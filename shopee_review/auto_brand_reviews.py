@@ -160,17 +160,36 @@ def all_items(tok):
         time.sleep(0.2)
     return names
 
-RECHECK_DAYS = 14   # sp +0 review sẽ được kiểm lại sau ngần này ngày (phòng khi có review mới)
+RECHECK_DAYS = 14          # sp +0 review sẽ được kiểm lại sau ngần này ngày (phòng khi có review mới)
+RECHECK_DONE_PER_RUN = 25  # mỗi lần quét LẠI tối đa ngần này sp ĐÃ gắn để bắt review MỚI (xoay vòng)
 
 def main():
     if not (K and S):
         print("[!] Thiếu WC_CONSUMER_KEY/SECRET -> dừng."); return
     st = load_state(); done = st.setdefault("done", {}); empty = st.setdefault("empty", {})
+    seen = st.setdefault("done_seen", {})   # {item_id: ngày quét lại gần nhất} -> xoay vòng ưu tiên sp lâu chưa kiểm
     tok = sr._get_valid_token()
     names = all_items(tok)
     used_web = set(done.values())
     today = datetime.date.today().isoformat()
 
+    # ===== PHA 1: quét LẠI sp ĐÃ gắn để bắt review MỚI =====
+    # import_reviews dedup theo buyer (bỏ qua TRƯỚC khi gọi Gemini) nên sp không có review mới ~0 quota.
+    # Xoay vòng: ưu tiên sp lâu chưa kiểm nhất, trần RECHECK_DONE_PER_RUN/lần để done phình to vẫn nhẹ.
+    new_total = 0
+    recheck = sorted(done.items(), key=lambda kv: seen.get(kv[0], ""))[:RECHECK_DONE_PER_RUN]
+    for iid_s, wid in recheck:
+        try:
+            added, n, avg = import_reviews(wid, int(iid_s))
+            seen[iid_s] = today
+            if added:
+                new_total += added
+                print(f"  🔄 [{wid}] +{added} review MỚI (tổng {n}, {avg}★)  <- Shopee {iid_s}")
+        except Exception as e:
+            print(f"  ⚠️ quét lại Shopee {iid_s} -> web {wid} lỗi: {str(e)[:80]}")
+    if recheck: save_state(st)
+
+    # ===== PHA 2: cặp MỚI (sp chưa từng gắn) =====
     # Xây worklist: sp chưa done, chưa trong "empty còn hạn", không WiWU/Lucas, khớp brand+mã model
     work = []
     for iid, nm in names.items():
@@ -187,9 +206,10 @@ def main():
     # Ưu tiên sp CŨ trước (item_id nhỏ = đăng lâu = nhiều review) -> lần chạy đầu hái hàng ngon
     work.sort(key=lambda x: x[0])
 
-    print(f"[i] {len(names)} sp Shopee | {len(done)} đã xong | {len(empty)} hẹn kiểm lại | {len(work)} cặp đủ điều kiện.")
+    print(f"[i] {len(names)} sp Shopee | {len(done)} đã xong (quét lại {len(recheck)}, +{new_total} review mới) | {len(empty)} hẹn kiểm lại | {len(work)} cặp mới.")
     if not work:
-        print("[+] Không có cặp mới để đẩy. Xong."); return
+        save_state(st)
+        print(f"[+] Không có cặp MỚI. Xong (đã thêm {new_total} review vào sp cũ)."); return
 
     total = 0; picked = work[:MAX_PRODUCTS_PER_RUN]
     for iid, nm, wid, wn in picked:
@@ -198,6 +218,7 @@ def main():
             total += added
             if added > 0:
                 done[str(iid)] = wid; used_web.add(wid); empty.pop(str(iid), None)
+                seen[str(iid)] = today   # vào lịch xoay vòng quét lại
             else:
                 # chưa có review đạt -> hẹn kiểm lại sau RECHECK_DAYS ngày
                 empty[str(iid)] = (datetime.date.today() + datetime.timedelta(days=RECHECK_DAYS)).isoformat()
@@ -206,7 +227,8 @@ def main():
         except Exception as e:
             print(f"  ⚠️ Shopee {iid} -> web {wid} lỗi: {str(e)[:80]}")
     save_state(st)
-    print(f"\nXONG lần này: {total} review, {len(picked)} sp. Còn lại chờ lần sau: {max(0,len(work)-MAX_PRODUCTS_PER_RUN)} cặp.")
+    print(f"\nXONG lần này: +{total} review (sp mới) + {new_total} review (sp cũ) = {total+new_total}. "
+          f"{len(picked)} cặp mới xử lý, còn {max(0,len(work)-MAX_PRODUCTS_PER_RUN)} cặp chờ.")
 
 if __name__ == "__main__":
     main()
