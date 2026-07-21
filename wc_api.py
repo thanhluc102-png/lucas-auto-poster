@@ -62,7 +62,7 @@ def _format_price(raw) -> str:
 
 
 def list_recent_products(brand_keyword: str = "", max_items: int = 30) -> list:
-    """Danh sách sản phẩm mới nhất (publish). Lọc theo brand_keyword nếu có.
+    """Danh sách sản phẩm mới nhất (publish). Lọc theo brand_keyword/category nếu có.
     Trả [{title, link, thumbnail}], hoặc [] nếu không bật/không có kết quả."""
     if not enabled():
         return []
@@ -73,8 +73,11 @@ def list_recent_products(brand_keyword: str = "", max_items: int = 30) -> list:
         "per_page": min(max(max_items * 2, 20), 100),
     }
     kw = (brand_keyword or "").strip().lower()
-    if kw and kw not in _ALL_SLUGS:
+    if kw in ("balo", "ba-lo", "ba lo"):
+        params["category"] = "4678"  # Category ID của Ba lô trên lucas.vn
+    elif kw and kw not in _ALL_SLUGS:
         params["search"] = kw
+
     try:
         r = requests.get(f"{WP_SITE_URL}/wp-json/wc/v3/products",
                          params=params, auth=_auth(), timeout=30)
@@ -85,6 +88,9 @@ def list_recent_products(brand_keyword: str = "", max_items: int = 30) -> list:
             link = p.get("permalink") or ""
             if not name or not link:
                 continue
+            # Nếu lọc balo thì ưu tiên các sản phẩm có từ khóa balo hoặc trong danh mục balo
+            if kw in ("balo", "ba-lo", "ba lo") and "balo" not in name.lower() and "ba lo" not in name.lower():
+                pass # Vẫn nhận từ danh mục balo
             imgs = [i.get("src") for i in p.get("images", []) if i.get("src")]
             out.append({"title": name, "link": link, "thumbnail": imgs[0] if imgs else ""})
             if len(out) >= max_items:
