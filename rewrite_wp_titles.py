@@ -25,20 +25,21 @@ CSV_PATH = os.path.abspath('content_plan.csv')
 def get_catchy_title(product_title: str) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     
-    prompt = f"""Bạn là một chuyên gia tối ưu tiêu đề SEO (giật tít, clickbait) cho trang tin tức phụ kiện công nghệ lucas.vn.
+    prompt = f"""Bạn là một chuyên gia tối ưu tiêu đề SEO giật tít số 1 cho trang phụ kiện công nghệ lucas.vn.
 Hãy viết một tiêu đề bài viết duy nhất cho sản phẩm sau đây:
 Tên sản phẩm: {product_title}
 
 Yêu cầu tiêu đề:
-1. Độ dài lý tưởng từ 55 - 65 ký tự.
-2. Cực kỳ cuốn hút, giật tít, kích thích tò mò, tạo ham muốn click ngay lập tức.
-3. Phải chứa từ khóa chính (tên sản phẩm hoặc thương hiệu + loại sản phẩm) để tối ưu công cụ tìm kiếm (SEO).
-4. KHÔNG dùng dấu ngoặc kép bọc ngoài tiêu đề, không giải thích gì thêm, chỉ trả về chuỗi tiêu đề duy nhất.
+1. Độ dài lý tưởng từ 55 - 68 ký tự.
+2. Cực kỳ cuốn hút, giật tít mạnh mẽ, đánh đúng tâm lý/nỗi sợ (ướt laptop, rạch túi, đau vai) hoặc tò mò ("Có đáng mua?", "Dân IT săn lùng?"), kích thích click ngay lập tức.
+3. Bắt buộc chứa từ khóa chính (tên sản phẩm / thương hiệu + loại sản phẩm như Balo, Túi chống sốc, Đế sạc...) để tối ưu SEO.
+4. KHÔNG dùng dấu ngoặc kép bọc ngoài tiêu đề, chỉ trả về chuỗi tiêu đề duy nhất.
 
-Ví dụ giật tít hay:
+Ví dụ giật tít hay cho Balo & Phụ kiện:
+- "Balo Tomtoc A42: Cứu Tinh Cho MacBook Pro 16 Inch Mưa Gió Sài Gòn?"
+- "Balo Inateck CB1001: 5 Lý Do Dân IT Bỏ Balo 3 Triệu Để Mua?"
+- "Có Thật Balo WiWU Pilot Chống Rạch Chống Nước Như Lời Đồn?"
 - "Đế Sạc 4-in-1 Aulumu M01: Tiền Nào Của Nấy, Có Thực Sự Đỉnh?"
-- "Giá Đỡ AULUMU G09 MagSafe: Có Đáng Cho Dân Chơi Công Nghệ?"
-- "Đánh Giá Ốp iPhone 17 Aulumu Aramid Fiber: Mỏng, Nhẹ Có Đủ Bảo Vệ?"
 
 Hãy tạo tiêu đề cho sản phẩm: {product_title}"""
 

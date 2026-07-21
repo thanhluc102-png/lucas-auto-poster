@@ -13,20 +13,22 @@ def generate_social_posts(product_title: str, product_link: str) -> dict:
         
     client = anthropic.Anthropic(api_key=api_key)
     
-    prompt = f"""Bạn là một chuyên gia viết content mạng xã hội (Facebook, Instagram, Threads).
-Hãy viết 3 phiên bản giới thiệu cho sản phẩm sau đây.
+    prompt = f"""Bạn là một copywriter đỉnh cao chuyên viết content viral/giật tít mạng xã hội (Facebook, Instagram, Threads) cho shop phụ kiện lucas.vn.
+Hãy viết 3 phiên bản content siêu cuốn hút, GIẬT TÍT MẠNH MẼ cho sản phẩm dưới đây:
 Tên sản phẩm: {product_title}
-Link (nếu cần tham khảo): {product_link}
+Link sản phẩm: {product_link}
 
-Quy tắc BẮT BUỘC:
-1. TRẢ VỀ DUY NHẤT MỘT KHỐI JSON, không kèm bất kỳ giải thích nào bên ngoài.
-2. Cấu trúc JSON phải chính xác như sau:
+Yêu cầu GIẬT TÍT & NỘI DUNG BẮT BUỘC:
+1. CÂU OPENING HOOK (GIẬT TÍT): BẮT BUỘC VIẾT HOA TOÀN BỘ (IN HOA 100%), cực kỳ giật gân/tò mò 🔥 (đánh vào nỗi sợ ướt laptop, rạch túi, hỏng máy, hoặc so sánh vượt tầm giá).
+2. XUỐNG DÒNG CÁCH THOÁNG: Ngay sau câu Hook in hoa, BẮT BUỘC xuống 2 lần dòng (tạo 1 dòng trống) rồi mới đến phần nội dung mô tả chi tiết.
+3. Từ ngữ ngắn gọn, đắt giá, trình bày thoáng mắt, dùng emoji hợp lý.
+4. Cấu trúc JSON bắt buộc:
 {{
-  "facebook": "Content vô cùng ngắn gọn (tối đa 3-4 câu), cách dòng thoáng, có emoji. KHÔNG chứa link. BẮT BUỘC có câu kết thúc: '👉 Xem chi tiết sản phẩm dưới phần Bình Luận nhé!'",
-  "instagram": "Content siêu ngắn (1-2 câu), tập trung vào lối sống, kèm 3-4 hashtag xịn xò cuối bài.",
-  "threads": "Content cực ngắn gọn, châm biếm hoặc review giật gân, dưới 100 chữ."
+  "facebook": "CÂU HOOK IN HOA 100% 🔥\\n\\n2-3 câu ngắn nêu bật tính năng đáng đồng tiền bát gạo (chống nước, đệm chống sốc, đựng Mac 16 inch...). KHÔNG chứa link trong bài.\\n\\n👉 Xem chi tiết sản phẩm và ưu đãi dưới phần Bình Luận nhé!",
+  "instagram": "CÂU HOOK IN HOA 100% ✨\\n\\nContent sang xịn mịn cho dân mê tech/lifestyle + 4 hashtag chuẩn viral.",
+  "threads": "CÂU HOOK IN HOA 100% 💥\\n\\nNội dung châm biếm/gây tranh cãi nhẹ hoặc review chân thực giật gân, dưới 80 chữ."
 }}
-3. Trong JSON, tuyệt đối dùng chuỗi hợp lệ (escaped string).
+5. Chỉ trả về DUY NHẤT 1 khối JSON hợp lệ, không có văn bản nào ngoài JSON.
 
 Hãy tạo nội dung JSON ngay bây giờ:"""
 

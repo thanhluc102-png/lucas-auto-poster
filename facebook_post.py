@@ -44,17 +44,20 @@ def save_fb_history(h: list):
 
 def get_candidate_products(limit=30) -> list:
     """Lấy sản phẩm mới nhất từ shop. Ưu tiên WooCommerce API, fallback scrape."""
+    target_url = os.getenv("TARGET_CATEGORY_URL", "https://lucas.vn/danh-muc/tui-xach-tui-chong-soc-ba-lo").strip()
+    target_kw = os.getenv("TARGET_KEYWORD", "balo").strip()
+
     try:
         import wc_api
         if wc_api.enabled():
-            prods = wc_api.list_recent_products(brand_keyword="", max_items=limit)
+            prods = wc_api.list_recent_products(brand_keyword=target_kw, max_items=limit)
             if prods:
                 return prods
     except Exception as e:
         print(f"[!] WC lỗi ({e}) -> fallback scrape.")
-    # fallback: scrape trang sản phẩm mới
+    # fallback: scrape trang sản phẩm theo danh mục
     from scraper import get_new_products
-    os.environ["TARGET_CATEGORY_URL"] = "https://lucas.vn/san-pham"
+    os.environ["TARGET_CATEGORY_URL"] = target_url
     return get_new_products()
 
 
