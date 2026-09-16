@@ -193,9 +193,9 @@ def render_card(review, out_path):
     _stars_row(draw, nx, cy + 56, 34, rating, ORANGE)
 
     y = cy + 100
-    # chip "Đã mua hàng"
+    # chip "Đã mua hàng" (card Google Maps truyền badge riêng qua review["badge"])
     y += 36
-    chip = "✓ Đã mua hàng"
+    chip = review.get("badge") or "✓ Đã mua hàng"
     f_chip = _font(23, bold=True)
     cw = draw.textlength(chip, font=f_chip)
     draw.rounded_rectangle((PADX, y, PADX + cw + 40, y + 50), radius=25,
@@ -260,7 +260,7 @@ def render_card(review, out_path):
     y += 34
     draw.line((PADX, y, W - PADX, y), fill=(241, 241, 241), width=1)
     y += 28
-    draw.text((PADX, y), "Khách hàng để lại đánh giá tại Shopee",
+    draw.text((PADX, y), review.get("footer") or "Khách hàng để lại đánh giá tại Shopee",
               font=_font(25, bold=True), fill=ORANGE)
 
     img.save(out_path, "PNG")

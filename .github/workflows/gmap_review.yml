@@ -1,0 +1,53 @@
+name: Google Review Card
+
+on:
+  schedule:
+    # 02:17 UTC ≈ 09:17 sáng VN — lệch giờ shopee (00:17) cho khỏi đụng nhau
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write      # commit ngược state (seen + ngày đăng)
+
+concurrency:
+  group: gmap-review-card
+  cancel-in-progress: false
+
+jobs:
+  gmap-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r shopee_review/requirements.txt
+
+      - name: Đăng 1 card Google review cũ lên Facebook
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        run: |
+          python shopee_review/gmap_daily.py
+
+      - name: Commit state
+        if: always()
+        run: |
+          git config --global user.name "GitHub Actions GMap"
+          git config --global user.email "actions@github.com"
+          git add shopee_review/gmap_seen.json shopee_review/gmap_post_state.json || true
+          if git diff --staged --quiet; then
+            echo "Không có thay đổi state."
+          else
+            git commit -m "chore(gmap): cập nhật lịch sử đăng review Google [skip ci]"
+            git pull --rebase origin "$GITHUB_REF_NAME" || true
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
