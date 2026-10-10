@@ -1,6 +1,6 @@
 {
-  "refresh_token": "eyJhbGciOiJIUzI1NiJ9.CKWvfBABGPXLpCogAijm3abWBjDis9fhCDgBQAFIAw.rPetPZHYDJuI07O0huKU_W2F3w08zzZEY9_nslzvJmU",
-  "access_token": "eyJhbGciOiJIUzI1NiJ9.CKWvfBABGPXLpCogASjm3abWBjC9qcXACjgBQAFIAw.gn53yj3P5jdDScRicm3LPvBXjsC7gsdLsZ2hGE8EfiE",
+  "refresh_token": "eyJhbGciOiJIUzI1NiJ9.CKWvfBABGPXLpCogAii66qrWBjCk9ojMCDgBQAFIAw.9LZ7fG6KfpX1asWVMTOdOdkHoVh_JAYN6Tstl0N0Ddw",
+  "access_token": "eyJhbGciOiJIUzI1NiJ9.CKWvfBABGPXLpCogASi66qrWBjCitvSACDgBQAFIAw.MdyG4sDS220Sdp6X6zOq91HLr5vzyDWxFdIItbjNyZU",
   "expire_in": 14324,
   "request_id": "e3e3e7f35584e6f773a124d8f2385d00",
   "merchant_id_list": [],
@@ -12,5 +12,5 @@
   "error": "",
   "message": "",
   "shop_id": 88679925,
-  "_obtained_at": 1791602405
+  "_obtained_at": 1791669562
 }
